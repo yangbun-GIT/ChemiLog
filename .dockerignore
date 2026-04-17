@@ -1,0 +1,14 @@
+# Exclude VCS and local development artifacts from build context
+.git
+.gitignore
+node_modules
+npm-debug.log*
+.venv
+__pycache__
+.env
+.env.*
+.idea
+.vscode
+dist
+build
+target

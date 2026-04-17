@@ -1,0 +1,60 @@
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+
+# Security-sensitive keys and certificates
+*.pem
+*.key
+*.p12
+*.crt
+*.cer
+*.jks
+*.keystore
+
+# Node.js
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+.venv/
+**/.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Java / Spring
+**/target/
+*.class
+
+# Frontend build outputs
+dist/
+build/
+coverage/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime / logs
+*.log
+logs/
+*.pid
+tmp/
+temp/
+
+# Local data volumes
+volumes/
+data/

@@ -1,0 +1,55 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: chemilog-main-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/chemilog}
+    username: ${SPRING_DATASOURCE_USERNAME:chemilog_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:chemilog_password}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 3000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mvc:
+    async:
+      request-timeout: 5000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+chemilog:
+  cors:
+    allowed-origins: ${CHEMILOG_CORS_ALLOWED_ORIGINS:http://localhost,http://localhost:8080}
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change_me}
+      access-exp-minutes: ${JWT_ACCESS_EXP_MINUTES:30}
+      refresh-exp-days: ${JWT_REFRESH_EXP_DAYS:14}
+  internal:
+    secret: ${CHEMILOG_INTERNAL_SECRET:change_me_internal_secret}
+    fastapi-base-url: ${CHEMILOG_FASTAPI_BASE_URL:http://fastapi-service:8000}

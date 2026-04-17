@@ -1,0 +1,12 @@
+{
+  "name": "chemilog-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "npm run build:customer && npm run build:admin",
+    "build:customer": "npm --prefix ./frontend/customer-web run build",
+    "build:admin": "npm --prefix ./frontend/admin-web run build",
+    "dev:customer": "npm --prefix ./frontend/customer-web run dev",
+    "dev:admin": "npm --prefix ./frontend/admin-web run dev"
+  }
+}
