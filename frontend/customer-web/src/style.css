@@ -26,9 +26,11 @@ body,
 #app {
   margin: 0;
   min-height: 100%;
+  background-color: #f7fcfa;
 }
 
 body {
+  background-color: #f7fcfa;
   background:
     radial-gradient(circle at 10% 0%, rgba(20, 178, 107, 0.16), transparent 38%),
     radial-gradient(circle at 90% 0%, rgba(0, 184, 200, 0.14), transparent 40%),
@@ -46,12 +48,7 @@ body {
 
 .app-shell::before,
 .app-shell::after {
-  content: "";
-  position: fixed;
-  pointer-events: none;
-  z-index: 0;
-  border-radius: 999px;
-  filter: blur(2px);
+  display: none;
 }
 
 .app-shell::before {
@@ -351,11 +348,22 @@ body {
   min-height: 132px;
 }
 
+.meal-slot-card.is-selected {
+  border-color: #67e8f9;
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 183, 0.18);
+  background: linear-gradient(180deg, #ecfeff, #ffffff);
+}
+
 .snack-bundle-card {
   border: 1px solid #e2e8f0;
   border-radius: 0.85rem;
   background: linear-gradient(180deg, #f0fdfa, #ffffff);
   padding: 0.75rem;
+}
+
+.snack-bundle-card.is-selected {
+  border-color: #67e8f9;
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 183, 0.18);
 }
 
 .heat-grid {

@@ -1,15 +1,28 @@
 ﻿<script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { RouterLink, useRouter } from "vue-router";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/authStore";
 import { useCartStore } from "../stores/cartStore";
 
+const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
 
-const mealType = ref("LUNCH");
-const loggedDate = ref(cartStore.todayKey);
+const VALID_MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"];
+
+function normalizeMealType(value, fallback = "LUNCH") {
+  const next = String(value || "").toUpperCase();
+  return VALID_MEAL_TYPES.includes(next) ? next : fallback;
+}
+
+function normalizeDate(value, fallback) {
+  const text = String(value || "");
+  return /^\d{4}-\d{2}-\d{2}$/u.test(text) ? text : fallback;
+}
+
+const mealType = ref(normalizeMealType(route.query.mealType, "LUNCH"));
+const loggedDate = ref(normalizeDate(route.query.date, cartStore.todayKey));
 const followToday = ref(true);
 
 const online = ref(typeof navigator !== "undefined" ? navigator.onLine : true);
@@ -219,6 +232,22 @@ watch(loggedDate, async () => {
   cancelMealEdit();
   await loadRemoteMeals();
 });
+
+watch(
+  () => route.query,
+  async (query) => {
+    const nextMealType = normalizeMealType(query.mealType, mealType.value);
+    const nextDate = normalizeDate(query.date, loggedDate.value);
+    const changed = nextMealType !== mealType.value || nextDate !== loggedDate.value;
+    mealType.value = nextMealType;
+    loggedDate.value = nextDate;
+    if (changed) {
+      cancelMealEdit();
+      await loadRemoteMeals();
+    }
+  },
+  { deep: true }
+);
 
 watch(
   () => cartStore.todayKey,

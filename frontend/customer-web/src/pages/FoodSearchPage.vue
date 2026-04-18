@@ -30,6 +30,8 @@ const recommendation = ref(null);
 const recommendationLoading = ref(false);
 const recommendationError = ref("");
 const recommendationSeed = ref(String(Date.now()));
+const mealTypeOptions = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"];
+const selectedSummaryMealType = ref(inferDefaultMealType());
 
 let searchTimer = null;
 
@@ -173,6 +175,49 @@ const recommendedCalories = computed(() =>
 const recommendationSignature = computed(() =>
   (recommendation.value?.meals || []).map((row) => row?.food?.foodId || "-").join("|")
 );
+const syncLinkTo = computed(() => ({
+  path: "/cart",
+  query: {
+    mealType: selectedSummaryMealType.value,
+    date: todayDate.value,
+  },
+}));
+const selectedMealPanel = computed(() => {
+  if (selectedSummaryMealType.value === "SNACK") {
+    return {
+      type: "SNACK",
+      label: "간식",
+      status: snackBundle.value.status,
+      totalCalories: snackBundle.value.totalCalories,
+      items: snackBundle.value.items || [],
+    };
+  }
+  const slot = dailyMealSlots.value.find((item) => item.type === selectedSummaryMealType.value);
+  if (slot) return slot;
+  return {
+    type: selectedSummaryMealType.value,
+    label: mealTypeLabel(selectedSummaryMealType.value),
+    status: "미기록",
+    totalCalories: 0,
+    items: [],
+  };
+});
+const orderedRecommendationMeals = computed(() => {
+  const rows = recommendation.value?.meals || [];
+  return [...rows].sort((a, b) => {
+    if (a?.mealType === selectedSummaryMealType.value) return -1;
+    if (b?.mealType === selectedSummaryMealType.value) return 1;
+    return 0;
+  });
+});
+
+function inferDefaultMealType() {
+  const hour = new Date().getHours();
+  if (hour < 10) return "BREAKFAST";
+  if (hour < 15) return "LUNCH";
+  if (hour < 21) return "DINNER";
+  return "SNACK";
+}
 
 function normalizedWarnings(labels) {
   return [
@@ -403,7 +448,7 @@ onMounted(async () => {
 
 <template>
   <section class="space-y-4">
-    <article class="bento-card">
+    <article id="daily-meal-plan" class="bento-card">
       <p class="eyebrow">Personal Context</p>
       <div class="mt-2 grid gap-3 md:grid-cols-[1.2fr_1fr]">
         <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -445,7 +490,12 @@ onMounted(async () => {
 
       <div v-else class="mt-3 space-y-3">
         <div class="meal-slot-grid">
-          <article v-for="slot in dailyMealSlots" :key="slot.type" class="meal-slot-card">
+          <article
+            v-for="slot in dailyMealSlots"
+            :key="slot.type"
+            class="meal-slot-card"
+            :class="{ 'is-selected': selectedSummaryMealType === slot.type }"
+          >
             <div class="flex items-center justify-between gap-2">
               <p class="text-sm font-semibold text-slate-900">{{ slot.label }}</p>
               <span class="pill">{{ slot.status }}</span>
@@ -460,7 +510,7 @@ onMounted(async () => {
           </article>
         </div>
 
-        <article class="snack-bundle-card">
+        <article class="snack-bundle-card" :class="{ 'is-selected': selectedSummaryMealType === 'SNACK' }">
           <div class="flex items-center justify-between gap-2">
             <div>
               <p class="text-sm font-semibold text-slate-900">간식 번들</p>
@@ -498,10 +548,26 @@ onMounted(async () => {
 
     <div class="grid items-start gap-4 lg:grid-cols-2">
       <article class="bento-card h-full">
-        <p class="eyebrow">Today Summary</p>
-        <h3 class="mt-1 text-xl font-semibold text-slate-900">장바구니</h3>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p class="eyebrow">Today Summary</p>
+            <h3 class="mt-1 text-xl font-semibold text-slate-900">장바구니</h3>
+          </div>
+          <label class="inline-flex items-center gap-2">
+            <span class="text-xs font-semibold text-slate-600">기준 식사</span>
+            <select v-model="selectedSummaryMealType" class="field-input !w-28 !py-2 !text-sm">
+              <option v-for="type in mealTypeOptions" :key="`summary-meal-${type}`" :value="type">
+                {{ mealTypeLabel(type) }}
+              </option>
+            </select>
+          </label>
+        </div>
 
-        <div class="mt-3 grid gap-2 sm:grid-cols-3">
+        <div class="mt-3 grid gap-2 sm:grid-cols-4">
+          <div class="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-3">
+            <p class="text-xs text-slate-500">선택 식사</p>
+            <p class="text-lg font-semibold text-slate-900">{{ selectedMealPanel.label }}</p>
+          </div>
           <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
             <p class="text-xs text-slate-500">총 수량</p>
             <p class="text-lg font-semibold text-slate-900">{{ cartStore.totalItemCount.toFixed(1) }}</p>
@@ -514,6 +580,24 @@ onMounted(async () => {
             <p class="text-xs text-slate-500">미동기화 초안 일수</p>
             <p class="text-lg font-semibold text-slate-900">{{ unsyncedDraftDays }}</p>
           </div>
+        </div>
+
+        <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-xs font-semibold text-slate-500">선택 식사 서버/추천 요약</p>
+            <span class="pill">{{ selectedMealPanel.status }}</span>
+          </div>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatCalories(selectedMealPanel.totalCalories) }}</p>
+          <div v-if="selectedMealPanel.items.length" class="mt-2 flex flex-wrap gap-2">
+            <span
+              v-for="(item, index) in selectedMealPanel.items.slice(0, 6)"
+              :key="`selected-panel-item-${index}`"
+              class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+            >
+              {{ item.name }} {{ formatQuantity(item.quantity) }}개
+            </span>
+          </div>
+          <p v-else class="mt-2 text-xs text-slate-500">해당 식사 기록이 없습니다.</p>
         </div>
 
         <div class="mt-3 rounded-xl border border-slate-200 bg-white p-3">
@@ -537,7 +621,7 @@ onMounted(async () => {
         </div>
 
         <div class="mt-3 flex gap-2">
-          <RouterLink to="/cart" class="btn-primary inline-flex">식단 동기화</RouterLink>
+          <RouterLink :to="syncLinkTo" class="btn-primary inline-flex">식단 동기화</RouterLink>
           <button class="btn-ghost" @click="refreshTodaySummary">오늘 식단 새로고침</button>
         </div>
       </article>
@@ -606,14 +690,14 @@ onMounted(async () => {
       <p class="eyebrow">Discover</p>
       <h2 class="title-lg">식품 검색</h2>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+        <div class="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
         <input
           v-model="keyword"
           type="text"
           class="field-input"
           placeholder="예: 삼겹살, 곱창, 된장찌개, 회, 라면"
         />
-        <RouterLink to="/cart" class="btn-ghost">장바구니/동기화 화면</RouterLink>
+        <RouterLink :to="syncLinkTo" class="btn-ghost">장바구니/동기화 화면</RouterLink>
       </div>
 
       <div class="mt-3 flex flex-wrap gap-2">
@@ -734,9 +818,10 @@ onMounted(async () => {
 
         <div v-else-if="recommendation?.meals?.length" class="mt-3 space-y-2">
           <article
-            v-for="item in recommendation.meals"
+            v-for="item in orderedRecommendationMeals"
             :key="item.mealType"
             class="rounded-xl border border-slate-200 bg-white p-3"
+            :class="item.mealType === selectedSummaryMealType ? 'border-cyan-300 bg-cyan-50/40' : ''"
           >
             <div class="flex items-center justify-between gap-2">
               <div>
