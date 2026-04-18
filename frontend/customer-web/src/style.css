@@ -337,6 +337,27 @@ body {
   animation: shimmer 1.2s linear infinite;
 }
 
+.meal-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.meal-slot-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  padding: 0.7rem;
+  min-height: 132px;
+}
+
+.snack-bundle-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, #f0fdfa, #ffffff);
+  padding: 0.75rem;
+}
+
 .heat-grid {
   display: grid;
   grid-template-columns: repeat(29, minmax(0, 1fr));
@@ -652,6 +673,10 @@ body {
 
   .food-row {
     grid-template-columns: 76px 1fr;
+  }
+
+  .meal-slot-grid {
+    grid-template-columns: 1fr;
   }
 
   .food-row-action {

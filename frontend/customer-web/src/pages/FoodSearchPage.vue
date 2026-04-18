@@ -47,6 +47,103 @@ const weeklyRhythmWeek = computed(() => {
 const unsyncedDraftDays = computed(() => weeklyRhythm.value.filter((day) => day.status === "DRAFT").length);
 const topConsumedAdditives = computed(() => cartStore.topConsumedAdditives);
 const todayDate = computed(() => cartStore.todayKey);
+const mealTypes = ["BREAKFAST", "LUNCH", "DINNER"];
+
+const recommendationByMealType = computed(() => {
+  const rows = recommendation.value?.meals || [];
+  const map = new Map();
+  for (const row of rows) {
+    if (row?.mealType) {
+      map.set(row.mealType, row);
+    }
+  }
+  return map;
+});
+
+const dailyMealSlots = computed(() => {
+  const grouped = new Map();
+  for (const meal of todayMeals.value || []) {
+    const type = meal?.mealType;
+    if (!type) continue;
+    if (!grouped.has(type)) {
+      grouped.set(type, { items: [], totalCalories: 0 });
+    }
+    const bucket = grouped.get(type);
+    bucket.totalCalories += Number(meal?.totalCalories || 0);
+    for (const item of meal?.items || []) {
+      const found = bucket.items.find((row) => row.foodId === item.foodId);
+      if (found) {
+        found.quantity += Number(item.quantity || 0);
+      } else {
+        bucket.items.push({
+          foodId: item.foodId,
+          name: item.foodName || `Food #${item.foodId}`,
+          quantity: Number(item.quantity || 0),
+        });
+      }
+    }
+  }
+
+  return mealTypes.map((type) => {
+    const fromServer = grouped.get(type) || { items: [], totalCalories: 0 };
+    const recommendationRow = recommendationByMealType.value.get(type);
+    const hasServer = fromServer.items.length > 0;
+    const fallbackItems = recommendationRow?.food
+      ? [{ name: `${recommendationRow.food.name} (추천)`, quantity: 1 }]
+      : [];
+    return {
+      type,
+      label: mealTypeLabel(type),
+      status: hasServer ? "기록됨" : fallbackItems.length ? "예정(추천)" : "미기록",
+      totalCalories: fromServer.totalCalories,
+      items: hasServer ? fromServer.items : fallbackItems,
+    };
+  });
+});
+
+const snackBundle = computed(() => {
+  const snacks = [];
+  let totalCalories = 0;
+
+  for (const meal of todayMeals.value || []) {
+    if (meal?.mealType !== "SNACK") continue;
+    totalCalories += Number(meal?.totalCalories || 0);
+    for (const item of meal?.items || []) {
+      const found = snacks.find((row) => row.foodId === item.foodId);
+      if (found) {
+        found.quantity += Number(item.quantity || 0);
+      } else {
+        snacks.push({
+          foodId: item.foodId,
+          name: item.foodName || `Food #${item.foodId}`,
+          quantity: Number(item.quantity || 0),
+        });
+      }
+    }
+  }
+
+  if (snacks.length === 0) {
+    const recommendationRow = recommendationByMealType.value.get("SNACK");
+    if (recommendationRow?.food) {
+      snacks.push({ name: `${recommendationRow.food.name} (추천)`, quantity: 1 });
+      totalCalories = Number(recommendationRow.food.calories || 0);
+    }
+  }
+
+  return {
+    status: snacks.length ? "간식 번들" : "간식 미기록",
+    totalCalories,
+    items: snacks,
+  };
+});
+
+const draftPlannedFoods = computed(() =>
+  (cartStore.items || []).map((item) => ({
+    foodId: item.foodId,
+    name: item.name,
+    quantity: Number(item.quantity || 0),
+  }))
+);
 
 const totalCategoryCount = computed(() =>
   categories.value.filter((item) => item.category !== "전체").reduce((sum, item) => sum + Number(item.itemCount || 0), 0)
@@ -98,6 +195,12 @@ function compactWarning(labels) {
 function formatCalories(value) {
   const num = Number(value || 0);
   return Number.isFinite(num) ? `${num.toFixed(0)} kcal` : "-";
+}
+
+function formatQuantity(value) {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num)) return "1";
+  return Number.isInteger(num) ? String(num) : num.toFixed(1);
 }
 
 function normalizePercent(calories) {
@@ -324,6 +427,72 @@ onMounted(async () => {
             <span v-if="!topConsumedAdditives.length" class="text-xs text-slate-500">데이터가 아직 없습니다.</span>
           </div>
         </div>
+      </div>
+    </article>
+
+    <article class="bento-card">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <p class="eyebrow">Daily Meal Plan</p>
+          <h3 class="mt-1 text-xl font-semibold text-slate-900">오늘 식단 확인</h3>
+        </div>
+        <span class="pill">{{ shortDate(todayDate) }}</span>
+      </div>
+
+      <div v-if="todayMealsLoading" class="mt-3 grid gap-3 md:grid-cols-3">
+        <div v-for="n in 3" :key="`meal-slot-skeleton-${n}`" class="skeleton h-28 rounded-xl" />
+      </div>
+
+      <div v-else class="mt-3 space-y-3">
+        <div class="meal-slot-grid">
+          <article v-for="slot in dailyMealSlots" :key="slot.type" class="meal-slot-card">
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-sm font-semibold text-slate-900">{{ slot.label }}</p>
+              <span class="pill">{{ slot.status }}</span>
+            </div>
+            <p class="mt-1 text-xs text-slate-500">{{ formatCalories(slot.totalCalories) }}</p>
+            <div v-if="slot.items.length" class="mt-2 space-y-1">
+              <p v-for="(item, index) in slot.items.slice(0, 3)" :key="`${slot.type}-${index}`" class="text-xs text-slate-700">
+                {{ item.name }} {{ formatQuantity(item.quantity) }}개
+              </p>
+            </div>
+            <p v-else class="mt-2 text-xs text-slate-500">아직 기록된 식단이 없습니다.</p>
+          </article>
+        </div>
+
+        <article class="snack-bundle-card">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <p class="text-sm font-semibold text-slate-900">간식 번들</p>
+              <p class="text-xs text-slate-500">{{ snackBundle.status }} · {{ formatCalories(snackBundle.totalCalories) }}</p>
+            </div>
+            <span class="pill">Snack</span>
+          </div>
+          <div v-if="snackBundle.items.length" class="mt-2 flex flex-wrap gap-2">
+            <span
+              v-for="(item, index) in snackBundle.items.slice(0, 6)"
+              :key="`snack-bundle-${index}`"
+              class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+            >
+              {{ item.name }} {{ formatQuantity(item.quantity) }}개
+            </span>
+          </div>
+          <p v-else class="mt-2 text-xs text-slate-500">간식 기록이 없습니다.</p>
+        </article>
+
+        <article class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p class="text-xs font-semibold text-slate-500">예정 식단(미동기화 장바구니)</p>
+          <div v-if="draftPlannedFoods.length" class="mt-2 flex flex-wrap gap-2">
+            <span
+              v-for="item in draftPlannedFoods.slice(0, 8)"
+              :key="`draft-plan-${item.foodId}`"
+              class="rounded-lg border border-cyan-100 bg-white px-2 py-1 text-xs text-slate-700"
+            >
+              {{ item.name }} {{ formatQuantity(item.quantity) }}개
+            </span>
+          </div>
+          <p v-else class="mt-2 text-xs text-slate-500">장바구니에 담긴 예정 식단이 없습니다.</p>
+        </article>
       </div>
     </article>
 
