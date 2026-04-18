@@ -42,6 +42,13 @@ body {
   padding: 0.9rem 0;
 }
 
+.admin-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .admin-brand-link {
   display: inline-flex;
   flex-direction: column;
@@ -88,6 +95,35 @@ body {
   gap: 0.5rem;
 }
 
+.admin-nav-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.admin-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.admin-nav-link {
+  text-decoration: none;
+  color: #0f172a;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  padding: 0.42rem 0.72rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.admin-nav-link.router-link-active,
+.admin-nav-link:hover {
+  border-color: #bae6fd;
+  background: #ecfeff;
+  color: #0e7490;
+}
+
 .admin-button {
   border: none;
   border-radius: 0.8rem;
@@ -102,6 +138,12 @@ body {
   background: #fff;
   border: 1px solid #cbd5e1;
   color: #0f172a;
+}
+
+.admin-button.secondary.is-selected {
+  border-color: #67e8f9;
+  background: #ecfeff;
+  color: #0e7490;
 }
 
 .admin-grid {
@@ -135,9 +177,19 @@ body {
   cursor: pointer;
 }
 
+.metric-button.is-disabled {
+  cursor: default;
+}
+
 .metric-button.is-active {
   border-color: #67e8f9;
   background: #ecfeff;
+}
+
+.metric-hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
+  color: #64748b;
 }
 
 .metric-title {
@@ -216,6 +268,17 @@ body {
   padding: 0.8rem;
 }
 
+.stat-box.metric-button {
+  appearance: none;
+  border: 1px solid #dbe5ef;
+  background: #f8fafc;
+}
+
+.stat-box.metric-button:hover {
+  border-color: #67e8f9;
+  background: #ecfeff;
+}
+
 .stat-box p {
   margin: 0;
   color: #64748b;
@@ -226,6 +289,24 @@ body {
   margin-top: 0.35rem;
   display: inline-block;
   font-size: 1.3rem;
+}
+
+.admin-inline-link {
+  margin-top: 0.4rem;
+  display: inline-flex;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.55rem;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.72rem;
+  padding: 0.22rem 0.46rem;
+  cursor: pointer;
+}
+
+.admin-inline-link:hover {
+  border-color: #67e8f9;
+  background: #ecfeff;
+  color: #0e7490;
 }
 
 .admin-table {
@@ -322,6 +403,30 @@ body {
   padding: 0.2rem 0.58rem;
 }
 
+.danger-chip.is-red {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.danger-chip.is-orange {
+  background: #ffedd5;
+  border-color: #fed7aa;
+  color: #c2410c;
+}
+
+.danger-chip.is-yellow {
+  background: #fef9c3;
+  border-color: #fef08a;
+  color: #a16207;
+}
+
+.danger-chip.is-green {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
 .skeleton {
   background: linear-gradient(110deg, #edf2f7 8%, #f8fafc 18%, #edf2f7 33%);
   background-size: 200% 100%;
@@ -352,5 +457,15 @@ body {
   .admin-top {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .admin-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-nav-wrap {
+    width: 100%;
+    justify-content: space-between;
   }
 }

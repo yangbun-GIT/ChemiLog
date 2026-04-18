@@ -4,7 +4,6 @@ import com.chemilog.main.domain.meal.MealType;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,7 +16,6 @@ public record MealSyncRequest(
         @NotNull(message = "logged_date는 필수입니다.")
         @JsonAlias("logged_date")
         LocalDate loggedDate,
-        @NotEmpty(message = "items는 비어 있을 수 없습니다.")
         @Valid
         List<Item> items
 ) {

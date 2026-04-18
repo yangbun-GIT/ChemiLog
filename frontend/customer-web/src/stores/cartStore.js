@@ -1,8 +1,9 @@
-﻿import { defineStore } from "pinia";
+import { defineStore } from "pinia";
 import api from "../api/client";
 
-const CART_STORAGE_KEY = "chemilog.customer.cart.v3";
-const CART_META_KEY = "chemilog.customer.cart.meta.v1";
+const CART_STORAGE_KEY = "chemilog.customer.cart.v4";
+const CART_META_KEY = "chemilog.customer.cart.meta.v2";
+let dateTickerId = null;
 
 function todayDateString() {
   const now = new Date();
@@ -12,6 +13,11 @@ function todayDateString() {
   return `${year}-${month}-${day}`;
 }
 
+function toNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
 function randomIdempotencyKey() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -19,9 +25,17 @@ function randomIdempotencyKey() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function toNumber(value, fallback = 0) {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : fallback;
+function normalizeWarningLabel(value) {
+  return String(value || "").replace(/^주의:\s*/u, "").trim();
+}
+
+function scoreFromCalories(totalCalories) {
+  const value = toNumber(totalCalories);
+  if (value <= 0) return 0;
+  if (value <= 550) return 4;
+  if (value <= 800) return 3;
+  if (value <= 1100) return 2;
+  return 1;
 }
 
 function normalizeItem(raw) {
@@ -37,18 +51,24 @@ function normalizeItem(raw) {
   };
 }
 
-function scoreFromCalories(totalCalories) {
-  const value = toNumber(totalCalories);
-  if (value <= 0) return 0;
-  if (value <= 550) return 4;
-  if (value <= 800) return 3;
-  if (value <= 1100) return 2;
-  return 1;
+function normalizeHistoryDay(raw) {
+  const date = String(raw?.date || "").trim();
+  if (!date) return null;
+  const topAdditives = Array.isArray(raw?.topAdditives)
+    ? [...new Set(raw.topAdditives.map(normalizeWarningLabel).filter(Boolean))]
+    : [];
+  return {
+    date,
+    totalCalories: toNumber(raw?.totalCalories),
+    itemCount: toNumber(raw?.itemCount),
+    topAdditives,
+  };
 }
 
 export const useCartStore = defineStore("cartStore", {
   state: () => ({
     items: [],
+    todayKey: todayDateString(),
     syncStatus: "LOCAL_DRAFT",
     isSyncing: false,
     syncError: null,
@@ -67,80 +87,144 @@ export const useCartStore = defineStore("cartStore", {
       const map = {
         LOCAL_DRAFT: {
           label: "로컬 초안",
-          description: "브라우저에만 저장된 상태입니다. 기록 완료를 누르면 서버에 저장됩니다.",
-          tone: "slate",
+          description: "브라우저에 임시 저장된 상태입니다.",
         },
         SYNCING: {
           label: "동기화 중",
-          description: "서버에 식단을 저장하고 있습니다.",
-          tone: "amber",
+          description: "서버에 식단을 저장 중입니다.",
         },
         COMMITTED: {
           label: "서버 저장 완료",
-          description: "서버 기록까지 완료된 상태입니다.",
-          tone: "emerald",
+          description: "서버 기록까지 반영된 상태입니다.",
         },
         SYNC_FAILED: {
           label: "동기화 실패",
-          description: "네트워크 또는 인증 문제로 저장에 실패했습니다. 재시도해주세요.",
-          tone: "rose",
+          description: "네트워크 또는 인증 오류입니다. 재시도해주세요.",
         },
       };
       return map[state.syncStatus] ?? map.LOCAL_DRAFT;
     },
     weeklyRhythm: (state) => {
-      const dayMap = new Map();
-      for (const entry of state.history) {
-        if (!entry?.date) continue;
-        const previous = dayMap.get(entry.date);
-        const nextScore = scoreFromCalories(entry.totalCalories);
-        if (!previous || nextScore > previous.level) {
-          dayMap.set(entry.date, {
-            date: entry.date,
-            level: nextScore,
-            totalCalories: toNumber(entry.totalCalories),
-            itemCount: toNumber(entry.itemCount),
-          });
-        }
-      }
+      const [year, month, day] = String(state.todayKey || todayDateString())
+        .split("-")
+        .map((value) => Number(value));
+      const today = Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)
+        ? new Date(year, month - 1, day)
+        : new Date();
+      const todayKey = state.todayKey || todayDateString();
+      const historyMap = new Map((state.history || []).map((day) => [day.date, day]));
+      const cells = [];
 
-      const result = [];
-      const today = new Date();
-      for (let i = 27; i >= 0; i -= 1) {
+      for (let offset = -14; offset <= 14; offset += 1) {
         const date = new Date(today);
-        date.setDate(today.getDate() - i);
+        date.setDate(today.getDate() + offset);
         const key = `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
-        const synced = dayMap.get(key);
+        const synced = historyMap.get(key);
 
         if (synced) {
-          result.push({
+          cells.push({
             date: key,
-            level: synced.level,
+            offset,
+            level: scoreFromCalories(synced.totalCalories),
             status: "SYNCED",
-            totalCalories: synced.totalCalories,
-            itemCount: synced.itemCount,
+            totalCalories: toNumber(synced.totalCalories),
+            itemCount: toNumber(synced.itemCount),
+            topAdditives: synced.topAdditives || [],
           });
           continue;
         }
 
-        if (key === todayDateString() && state.items.length > 0) {
-          result.push({
+        if (key === todayKey && state.items.length > 0) {
+          cells.push({
             date: key,
+            offset,
             level: Math.max(1, scoreFromCalories(state.totalCalories) - 1),
             status: "DRAFT",
             totalCalories: state.totalCalories,
             itemCount: state.items.length,
+            topAdditives: [],
           });
           continue;
         }
 
-        result.push({ date: key, level: 0, status: "NONE", totalCalories: 0, itemCount: 0 });
+        cells.push({
+          date: key,
+          offset,
+          level: 0,
+          status: "NONE",
+          totalCalories: 0,
+          itemCount: 0,
+          topAdditives: [],
+        });
       }
-      return result;
+
+      return cells;
+    },
+    topConsumedAdditives: (state) => {
+      const [year, month, day] = String(state.todayKey || todayDateString())
+        .split("-")
+        .map((value) => Number(value));
+      const today = Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)
+        ? new Date(year, month - 1, day)
+        : new Date();
+      const start = new Date(today);
+      start.setDate(today.getDate() - 27);
+      const startKey = `${start.getFullYear()}-${`${start.getMonth() + 1}`.padStart(2, "0")}-${`${start.getDate()}`.padStart(2, "0")}`;
+      const endKey = state.todayKey || todayDateString();
+
+      const score = new Map();
+      for (const day of state.history || []) {
+        if (!day?.date || day.date < startKey || day.date > endKey) continue;
+        const dayWeight = Math.max(1, scoreFromCalories(day.totalCalories));
+        for (const additive of day.topAdditives || []) {
+          const normalized = normalizeWarningLabel(additive);
+          score.set(normalized, (score.get(normalized) || 0) + dayWeight);
+        }
+      }
+
+      return [...score.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name)
+        .slice(0, 4);
+    },
+    syncedDaysLast28: (state) => {
+      const [year, month, day] = String(state.todayKey || todayDateString())
+        .split("-")
+        .map((value) => Number(value));
+      const today = Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)
+        ? new Date(year, month - 1, day)
+        : new Date();
+      const start = new Date(today);
+      start.setDate(today.getDate() - 27);
+      const startKey = `${start.getFullYear()}-${`${start.getMonth() + 1}`.padStart(2, "0")}-${`${start.getDate()}`.padStart(2, "0")}`;
+      const endKey = state.todayKey || todayDateString();
+      return (state.history || []).filter(
+        (day) => day.date >= startKey && day.date <= endKey && toNumber(day.totalCalories) > 0
+      ).length;
     },
   },
   actions: {
+    tickTodayKey() {
+      const next = todayDateString();
+      if (this.todayKey !== next) {
+        this.todayKey = next;
+      }
+    },
+    startDateTicker() {
+      this.tickTodayKey();
+      if (dateTickerId) return;
+      dateTickerId = window.setInterval(() => {
+        this.tickTodayKey();
+      }, 30 * 1000);
+    },
+    stopDateTicker() {
+      if (dateTickerId) {
+        window.clearInterval(dateTickerId);
+        dateTickerId = null;
+      }
+    },
     hydrate() {
+      this.todayKey = todayDateString();
       const rawItems = localStorage.getItem(CART_STORAGE_KEY);
       if (rawItems) {
         try {
@@ -159,13 +243,15 @@ export const useCartStore = defineStore("cartStore", {
           const parsed = JSON.parse(rawMeta);
           this.syncStatus = parsed.syncStatus ?? "LOCAL_DRAFT";
           this.lastSyncResult = parsed.lastSyncResult ?? null;
-          this.history = Array.isArray(parsed.history) ? parsed.history.slice(-180) : [];
           this.syncError = parsed.syncError ?? null;
+          this.history = Array.isArray(parsed.history)
+            ? parsed.history.map(normalizeHistoryDay).filter(Boolean).slice(-365)
+            : [];
         } catch {
           this.syncStatus = "LOCAL_DRAFT";
           this.lastSyncResult = null;
-          this.history = [];
           this.syncError = null;
+          this.history = [];
         }
       }
     },
@@ -179,7 +265,7 @@ export const useCartStore = defineStore("cartStore", {
           syncStatus: this.syncStatus,
           syncError: this.syncError,
           lastSyncResult: this.lastSyncResult,
-          history: this.history.slice(-180),
+          history: this.history.slice(-365),
         })
       );
     },
@@ -224,15 +310,42 @@ export const useCartStore = defineStore("cartStore", {
     clearItems() {
       this.items = [];
       localStorage.removeItem(CART_STORAGE_KEY);
+      this.syncStatus = "LOCAL_DRAFT";
+      this.syncError = null;
+      this.persistMeta();
     },
     clearAll() {
       this.items = [];
+      this.todayKey = todayDateString();
       this.syncStatus = "LOCAL_DRAFT";
       this.syncError = null;
       this.lastSyncResult = null;
       this.history = [];
       localStorage.removeItem(CART_STORAGE_KEY);
       localStorage.removeItem(CART_META_KEY);
+    },
+    incrementQuantity(foodId, step = 1) {
+      const target = this.items.find((item) => item.foodId === foodId);
+      if (!target) return;
+      target.quantity = Math.max(0.1, Number(target.quantity || 0) + Number(step || 0));
+      this.syncStatus = "LOCAL_DRAFT";
+      this.syncError = null;
+      this.persistItems();
+      this.persistMeta();
+    },
+    decrementQuantity(foodId, step = 1) {
+      const target = this.items.find((item) => item.foodId === foodId);
+      if (!target) return;
+      const next = Number(target.quantity || 0) - Number(step || 0);
+      if (next <= 0) {
+        this.remove(foodId);
+        return;
+      }
+      target.quantity = Math.max(0.1, next);
+      this.syncStatus = "LOCAL_DRAFT";
+      this.syncError = null;
+      this.persistItems();
+      this.persistMeta();
     },
     async fetchTodayRemote(date = todayDateString()) {
       const response = await api.get("/meals/today", { params: { date } });
@@ -246,6 +359,19 @@ export const useCartStore = defineStore("cartStore", {
         },
       });
       return response.data?.data?.days ?? [];
+    },
+    async fetchDayMeals(date = todayDateString()) {
+      const response = await api.get("/meals/day", { params: { date } });
+      return response.data?.data?.meals ?? [];
+    },
+    async updateMeal(mealId, payload) {
+      const response = await api.patch(`/meals/${mealId}`, payload);
+      const data = response.data?.data ?? null;
+      this.lastSyncResult = data;
+      this.syncStatus = "COMMITTED";
+      this.syncError = null;
+      this.persistMeta();
+      return data;
     },
     mergeWithServerItems(serverItems) {
       const merged = new Map();
@@ -313,18 +439,18 @@ export const useCartStore = defineStore("cartStore", {
 
         const data = response.data?.data ?? null;
         this.lastSyncResult = data;
-        this.history.push({
-          date: loggedDate,
-          totalCalories: toNumber(data?.totalCalories),
-          itemCount: this.items.length,
-          mealId: data?.mealId ?? null,
-        });
-        this.history = this.history.slice(-180);
+        this.applyHistory([
+          {
+            date: loggedDate,
+            totalCalories: toNumber(data?.totalCalories),
+            itemCount: this.items.length,
+            topAdditives: [],
+          },
+        ]);
         this.syncStatus = "COMMITTED";
         this.syncError = null;
         this.clearItems();
         this.persistMeta();
-
         return data;
       } catch (error) {
         this.syncStatus = "SYNC_FAILED";
@@ -340,30 +466,13 @@ export const useCartStore = defineStore("cartStore", {
     },
     applyHistory(days) {
       if (!Array.isArray(days)) return;
-      for (const day of days) {
-        if (!day?.date) continue;
-        this.history.push({
-          date: day.date,
-          totalCalories: toNumber(day.totalCalories),
-          itemCount: toNumber(day.itemCount),
-          mealId: null,
-        });
+      const map = new Map((this.history || []).map((day) => [day.date, day]));
+      for (const raw of days) {
+        const normalized = normalizeHistoryDay(raw);
+        if (!normalized) continue;
+        map.set(normalized.date, normalized);
       }
-      this.history = this.history
-        .reduce((acc, item) => {
-          const existing = acc.find((v) => v.date === item.date);
-          if (!existing) {
-            acc.push(item);
-            return acc;
-          }
-          if (toNumber(item.totalCalories) > toNumber(existing.totalCalories)) {
-            existing.totalCalories = item.totalCalories;
-            existing.itemCount = item.itemCount;
-          }
-          return acc;
-        }, [])
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(-180);
+      this.history = [...map.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-365);
       this.persistMeta();
     },
   },

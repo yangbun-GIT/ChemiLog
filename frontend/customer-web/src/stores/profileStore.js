@@ -136,5 +136,17 @@ export const useProfileStore = defineStore("profileStore", {
       this.persist();
       return data;
     },
+    async updateProfile(payload) {
+      await api.patch("/users/me/profile", {
+        goal: payload.goal,
+        strictness: payload.strictness,
+        allergies: parseAllergies(payload.allergies),
+      });
+      this.goal = payload.goal;
+      this.strictness = payload.strictness;
+      this.allergies = parseAllergies(payload.allergies);
+      this.onboardingCompleted = true;
+      this.persist();
+    },
   },
 });

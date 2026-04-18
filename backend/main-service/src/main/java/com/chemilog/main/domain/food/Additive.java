@@ -51,4 +51,30 @@ public class Additive extends BaseTimeEntity {
     public String getDailyAcceptableIntake() {
         return dailyAcceptableIntake;
     }
+
+    public static Additive create(
+            String name,
+            String purpose,
+            Integer dangerLevel,
+            String dailyAcceptableIntake
+    ) {
+        Additive additive = new Additive();
+        additive.name = name;
+        additive.purpose = purpose;
+        additive.dangerLevel = dangerLevel;
+        additive.dailyAcceptableIntake = dailyAcceptableIntake;
+        return additive;
+    }
+
+    public void update(
+            String name,
+            String purpose,
+            Integer dangerLevel,
+            String dailyAcceptableIntake
+    ) {
+        this.name = name;
+        this.purpose = purpose;
+        this.dangerLevel = dangerLevel;
+        this.dailyAcceptableIntake = dailyAcceptableIntake;
+    }
 }

@@ -72,6 +72,10 @@ public class User extends SoftDeleteEntity {
         this.status = status;
     }
 
+    public void updateRole(UserRole role) {
+        this.role = role;
+    }
+
     public void updateHealthProfile(Map<String, Object> healthProfile) {
         this.healthProfile = healthProfile;
     }

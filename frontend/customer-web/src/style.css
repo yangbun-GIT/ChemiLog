@@ -29,14 +29,45 @@ body,
 }
 
 body {
-  background: radial-gradient(circle at 8% -5%, rgba(0, 184, 200, 0.08), transparent 42%),
-    linear-gradient(180deg, #f8fbfd 0%, #f4f7fb 100%);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(20, 178, 107, 0.16), transparent 38%),
+    radial-gradient(circle at 90% 0%, rgba(0, 184, 200, 0.14), transparent 40%),
+    radial-gradient(circle at 50% 110%, rgba(242, 139, 48, 0.12), transparent 45%),
+    linear-gradient(180deg, #f7fcfa 0%, #eef5f8 100%);
   color: var(--ink-900);
   font-family: "Manrope", "Noto Sans KR", sans-serif;
 }
 
 .app-shell {
   background: transparent;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.app-shell::before,
+.app-shell::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 999px;
+  filter: blur(2px);
+}
+
+.app-shell::before {
+  width: 420px;
+  height: 420px;
+  left: -140px;
+  top: 140px;
+  background: radial-gradient(circle at 30% 30%, rgba(52, 211, 153, 0.18), rgba(20, 184, 166, 0.02));
+}
+
+.app-shell::after {
+  width: 360px;
+  height: 360px;
+  right: -120px;
+  top: 260px;
+  background: radial-gradient(circle at 50% 50%, rgba(251, 146, 60, 0.2), rgba(245, 158, 11, 0.02));
 }
 
 .site-header {
@@ -57,6 +88,8 @@ body {
   margin: 0 auto;
   width: min(1200px, calc(100% - 2rem));
   padding: 1.25rem 0 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .brand-block {
@@ -176,7 +209,10 @@ body {
 .bento-card,
 .glass-card {
   border: 1px solid var(--line);
-  background: var(--bg-panel);
+  background:
+    linear-gradient(125deg, rgba(20, 184, 166, 0.02), rgba(251, 146, 60, 0.02) 42%, rgba(255, 255, 255, 0.22) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9)),
+    radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.08), transparent 45%);
   border-radius: 1rem;
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
 }
@@ -303,14 +339,59 @@ body {
 
 .heat-grid {
   display: grid;
-  grid-template-columns: repeat(28, minmax(0, 1fr));
+  grid-template-columns: repeat(29, minmax(0, 1fr));
   gap: 0.22rem;
+}
+
+.heat-grid-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.28rem;
+}
+
+.heat-grid-week-compact {
+  gap: 0.22rem;
+}
+
+.heat-label-grid {
+  display: grid;
+  grid-template-columns: repeat(29, minmax(0, 1fr));
+  gap: 0.22rem;
+  margin-bottom: 0.25rem;
+}
+
+.heat-label-grid-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.28rem;
+  margin-bottom: 0.25rem;
+}
+
+.heat-label-cell {
+  min-height: 1.7rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  color: #64748b;
+  font-size: 0.6rem;
+  text-align: center;
+}
+
+.heat-label-cell strong {
+  font-size: 0.62rem;
+  color: #334155;
 }
 
 .heat-cell {
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 4px;
+}
+
+.heat-cell-compact {
+  aspect-ratio: auto;
+  min-height: 18px;
 }
 
 .heat-0 {
@@ -398,7 +479,7 @@ body {
 .floating-guide-button {
   position: fixed;
   right: 1rem;
-  top: 45%;
+  bottom: 5.75rem;
   z-index: 70;
   border: 1px solid #cbd5e1;
   background: #ffffff;
@@ -476,6 +557,28 @@ body {
   font-size: 0.72rem;
   font-weight: 600;
   color: #0f172a;
+}
+
+.day-additive {
+  margin: 0.2rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.status-help-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #334155;
+  background: #fff;
+  cursor: help;
 }
 
 .overlay-shell {
@@ -558,7 +661,6 @@ body {
 
   .floating-guide-button {
     right: 0.7rem;
-    top: auto;
-    bottom: 7rem;
+    bottom: 6.8rem;
   }
 }

@@ -59,6 +59,7 @@ public class SecurityConfig {
                                 "/api/v1/foods/search",
                                 "/api/v1/foods/categories",
                                 "/api/v1/foods/popular",
+                                "/api/v1/foods/recommendation",
                                 "/api/v1/internal/**",
                                 "/actuator/**",
                                 "/api-docs/**",

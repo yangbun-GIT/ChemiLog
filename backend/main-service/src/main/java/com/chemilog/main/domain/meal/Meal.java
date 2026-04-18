@@ -50,6 +50,9 @@ public class Meal extends BaseTimeEntity {
     @Column(name = "health_score")
     private Integer healthScore;
 
+    @Column(name = "is_deleted", nullable = false)
+    private boolean deleted = false;
+
     protected Meal() {
     }
 
@@ -77,6 +80,10 @@ public class Meal extends BaseTimeEntity {
         return healthScore;
     }
 
+    public boolean isDeleted() {
+        return deleted;
+    }
+
     public static Meal create(
             User user,
             LocalDate mealDate,
@@ -97,5 +104,18 @@ public class Meal extends BaseTimeEntity {
 
     public void updateTotalCalories(BigDecimal totalCalories) {
         this.totalCalories = totalCalories;
+    }
+
+    public void updateMealInfo(LocalDate mealDate, MealType mealType) {
+        this.mealDate = mealDate;
+        this.mealType = mealType;
+    }
+
+    public void markDeleted() {
+        this.deleted = true;
+    }
+
+    public void restore() {
+        this.deleted = false;
     }
 }

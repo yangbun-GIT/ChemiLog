@@ -23,8 +23,15 @@ function onOffline() {
   online.value = false;
 }
 
+function onVisibilityChange() {
+  if (document.visibilityState === "visible") {
+    cartStore.tickTodayKey();
+  }
+}
+
 onMounted(async () => {
   cartStore.hydrate();
+  cartStore.startDateTicker();
   profileStore.hydrate();
   await authStore.trySilentRefresh();
 
@@ -40,11 +47,14 @@ onMounted(async () => {
 
   window.addEventListener("online", onOnline);
   window.addEventListener("offline", onOffline);
+  document.addEventListener("visibilitychange", onVisibilityChange);
 });
 
 onUnmounted(() => {
+  cartStore.stopDateTicker();
   window.removeEventListener("online", onOnline);
   window.removeEventListener("offline", onOffline);
+  document.removeEventListener("visibilitychange", onVisibilityChange);
 });
 </script>
 

@@ -60,4 +60,8 @@ public class MealDetail extends BaseTimeEntity {
         detail.quantity = quantity;
         return detail;
     }
+
+    public void updateQuantity(BigDecimal quantity) {
+        this.quantity = quantity;
+    }
 }

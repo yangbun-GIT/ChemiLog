@@ -42,10 +42,11 @@ public interface FoodItemRepository extends JpaRepository<FoodItem, Long> {
             FROM FoodItem f
             LEFT JOIN MealDetail md ON md.food = f
             WHERE f.deleted = false
+              AND (:category = '' OR f.category = :category)
             GROUP BY f
             ORDER BY COALESCE(SUM(md.quantity), 0) DESC, f.createdAt DESC
             """)
-    List<FoodItem> findPopularFoods(Pageable pageable);
+    List<FoodItem> findPopularFoods(@Param("category") String category, Pageable pageable);
 
     Optional<FoodItem> findByFoodIdAndDeletedFalse(Long foodId);
 }

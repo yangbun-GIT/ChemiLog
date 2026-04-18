@@ -48,9 +48,19 @@ public class FoodController {
 
     @GetMapping("/popular")
     public ResponseEntity<ApiResponse<List<FoodResponse>>> popular(
+            @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "6") @Min(1) @Max(30) int limit
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(foodService.popular(limit)));
+        return ResponseEntity.ok(ApiResponse.ok(foodService.popular(category, limit)));
+    }
+
+    @GetMapping("/recommendation")
+    public ResponseEntity<ApiResponse<FoodRecommendationResponse>> recommendation(
+            @RequestParam(required = false) String goal,
+            @RequestParam(required = false) String strictness,
+            @RequestParam(required = false) String seed
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(foodService.recommendation(goal, strictness, seed)));
     }
 
     @PreAuthorize("hasRole('ADMIN')")

@@ -10,7 +10,8 @@ public record MealHistoryResponse(
     public record DaySummary(
             LocalDate date,
             BigDecimal totalCalories,
-            int itemCount
+            int itemCount,
+            List<String> topAdditives
     ) {
     }
 }
