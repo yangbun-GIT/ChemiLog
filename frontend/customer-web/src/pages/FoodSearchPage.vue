@@ -32,6 +32,12 @@ const recommendationError = ref("");
 const recommendationSeed = ref(String(Date.now()));
 const mealTypeOptions = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"];
 const selectedSummaryMealType = ref(inferDefaultMealType());
+const MEAL_ORDER = {
+  BREAKFAST: 0,
+  LUNCH: 1,
+  DINNER: 2,
+  SNACK: 3,
+};
 
 let searchTimer = null;
 
@@ -50,17 +56,6 @@ const unsyncedDraftDays = computed(() => weeklyRhythm.value.filter((day) => day.
 const topConsumedAdditives = computed(() => cartStore.topConsumedAdditives);
 const todayDate = computed(() => cartStore.todayKey);
 const mealTypes = ["BREAKFAST", "LUNCH", "DINNER"];
-
-const recommendationByMealType = computed(() => {
-  const rows = recommendation.value?.meals || [];
-  const map = new Map();
-  for (const row of rows) {
-    if (row?.mealType) {
-      map.set(row.mealType, row);
-    }
-  }
-  return map;
-});
 
 const dailyMealSlots = computed(() => {
   const grouped = new Map();
@@ -88,17 +83,13 @@ const dailyMealSlots = computed(() => {
 
   return mealTypes.map((type) => {
     const fromServer = grouped.get(type) || { items: [], totalCalories: 0 };
-    const recommendationRow = recommendationByMealType.value.get(type);
     const hasServer = fromServer.items.length > 0;
-    const fallbackItems = recommendationRow?.food
-      ? [{ name: `${recommendationRow.food.name} (추천)`, quantity: 1 }]
-      : [];
     return {
       type,
       label: mealTypeLabel(type),
-      status: hasServer ? "기록됨" : fallbackItems.length ? "예정(추천)" : "미기록",
+      status: hasServer ? "Logged" : "Empty",
       totalCalories: fromServer.totalCalories,
-      items: hasServer ? fromServer.items : fallbackItems,
+      items: hasServer ? fromServer.items : [],
     };
   });
 });
@@ -124,28 +115,12 @@ const snackBundle = computed(() => {
     }
   }
 
-  if (snacks.length === 0) {
-    const recommendationRow = recommendationByMealType.value.get("SNACK");
-    if (recommendationRow?.food) {
-      snacks.push({ name: `${recommendationRow.food.name} (추천)`, quantity: 1 });
-      totalCalories = Number(recommendationRow.food.calories || 0);
-    }
-  }
-
   return {
-    status: snacks.length ? "간식 번들" : "간식 미기록",
+    status: snacks.length ? "Snack" : "Empty",
     totalCalories,
     items: snacks,
   };
 });
-
-const draftPlannedFoods = computed(() =>
-  (cartStore.items || []).map((item) => ({
-    foodId: item.foodId,
-    name: item.name,
-    quantity: Number(item.quantity || 0),
-  }))
-);
 
 const totalCategoryCount = computed(() =>
   categories.value.filter((item) => item.category !== "전체").reduce((sum, item) => sum + Number(item.itemCount || 0), 0)
@@ -167,7 +142,7 @@ const showCollapseButton = computed(
 );
 const isBarMode = computed(() => isExpanded.value);
 const resultTitle = computed(() =>
-  selectedCategory.value === "전체" ? "전체 Popular 6" : `${selectedCategory.value} Popular 6`
+  selectedCategory.value === "전체" ? "전체 Top 6" : `${selectedCategory.value} Top 6`
 );
 const recommendedCalories = computed(() =>
   (recommendation.value?.meals || []).reduce((sum, row) => sum + Number(row?.food?.calories || 0), 0)
@@ -197,18 +172,34 @@ const selectedMealPanel = computed(() => {
   return {
     type: selectedSummaryMealType.value,
     label: mealTypeLabel(selectedSummaryMealType.value),
-    status: "미기록",
+    status: "Empty",
     totalCalories: 0,
     items: [],
   };
 });
 const orderedRecommendationMeals = computed(() => {
   const rows = recommendation.value?.meals || [];
-  return [...rows].sort((a, b) => {
-    if (a?.mealType === selectedSummaryMealType.value) return -1;
-    if (b?.mealType === selectedSummaryMealType.value) return 1;
-    return 0;
-  });
+  return [...rows].sort((a, b) => (MEAL_ORDER[a?.mealType] ?? 99) - (MEAL_ORDER[b?.mealType] ?? 99));
+});
+const dailyCaloriesSummary = computed(() => {
+  const byType = {
+    BREAKFAST: 0,
+    LUNCH: 0,
+    DINNER: 0,
+    SNACK: 0,
+  };
+  for (const slot of dailyMealSlots.value) {
+    byType[slot.type] = Number(slot.totalCalories || 0);
+  }
+  byType.SNACK = Number(snackBundle.value.totalCalories || 0);
+  const total = byType.BREAKFAST + byType.LUNCH + byType.DINNER + byType.SNACK;
+  const loggedMealCount =
+    dailyMealSlots.value.filter((slot) => slot.items.length > 0).length + (snackBundle.value.items.length > 0 ? 1 : 0);
+  return {
+    ...byType,
+    total,
+    loggedMealCount,
+  };
 });
 
 function inferDefaultMealType() {
@@ -513,7 +504,7 @@ onMounted(async () => {
         <article class="snack-bundle-card" :class="{ 'is-selected': selectedSummaryMealType === 'SNACK' }">
           <div class="flex items-center justify-between gap-2">
             <div>
-              <p class="text-sm font-semibold text-slate-900">간식 번들</p>
+              <p class="text-sm font-semibold text-slate-900">간식</p>
               <p class="text-xs text-slate-500">{{ snackBundle.status }} · {{ formatCalories(snackBundle.totalCalories) }}</p>
             </div>
             <span class="pill">Snack</span>
@@ -531,17 +522,15 @@ onMounted(async () => {
         </article>
 
         <article class="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <p class="text-xs font-semibold text-slate-500">예정 식단(미동기화 장바구니)</p>
-          <div v-if="draftPlannedFoods.length" class="mt-2 flex flex-wrap gap-2">
-            <span
-              v-for="item in draftPlannedFoods.slice(0, 8)"
-              :key="`draft-plan-${item.foodId}`"
-              class="rounded-lg border border-cyan-100 bg-white px-2 py-1 text-xs text-slate-700"
-            >
-              {{ item.name }} {{ formatQuantity(item.quantity) }}개
-            </span>
-          </div>
-          <p v-else class="mt-2 text-xs text-slate-500">장바구니에 담긴 예정 식단이 없습니다.</p>
+          <p class="text-xs font-semibold text-slate-500">오늘 식단 칼로리 종합</p>
+          <p class="mt-2 text-sm font-semibold text-slate-900">
+            아침 {{ formatCalories(dailyCaloriesSummary.BREAKFAST) }}
+            + 점심 {{ formatCalories(dailyCaloriesSummary.LUNCH) }}
+            + 저녁 {{ formatCalories(dailyCaloriesSummary.DINNER) }}
+            + 간식 {{ formatCalories(dailyCaloriesSummary.SNACK) }}
+            = 총 {{ formatCalories(dailyCaloriesSummary.total) }}
+          </p>
+          <p class="mt-1 text-xs text-slate-500">기록된 식사 수: {{ dailyCaloriesSummary.loggedMealCount }} / 4</p>
         </article>
       </div>
     </article>
@@ -584,7 +573,7 @@ onMounted(async () => {
 
         <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
           <div class="flex items-center justify-between gap-2">
-            <p class="text-xs font-semibold text-slate-500">선택 식사 서버/추천 요약</p>
+            <p class="text-xs font-semibold text-slate-500">선택 식사 실제 기록 요약</p>
             <span class="pill">{{ selectedMealPanel.status }}</span>
           </div>
           <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatCalories(selectedMealPanel.totalCalories) }}</p>
@@ -720,7 +709,7 @@ onMounted(async () => {
           <p class="eyebrow">{{ isBarMode ? `${selectedCategory} 전체` : resultTitle }}</p>
           <div class="flex items-center gap-2">
             <button v-if="showMoreButton" class="btn-ghost" @click="expandCurrentCategory">더보기</button>
-            <button v-if="showCollapseButton" class="btn-ghost" @click="collapseCurrentCategory">대표 6 보기</button>
+            <button v-if="showCollapseButton" class="btn-ghost" @click="collapseCurrentCategory">Top 6 보기</button>
             <button class="btn-ghost" @click="loadFoods">새로고침</button>
           </div>
         </div>
@@ -878,9 +867,9 @@ onMounted(async () => {
         </div>
         <div class="mt-3 space-y-2 text-sm text-slate-700">
           <p>1. 기본은 카테고리별 대표 6개만 보여주고, [더보기]를 누르면 전체 목록을 막대형으로 확인할 수 있습니다.</p>
-          <p>2. Today Summary에서 담은 음식 수량(+, -)과 제거를 바로 조작할 수 있습니다.</p>
-          <p>3. Weekly Detox Rhythm은 최근 7일 기준이며, 중앙 칸이 오늘입니다.</p>
-          <p>4. 이미지가 맞지 않으면 관리자 &gt; 식품 관리에서 image_url을 수정해 정확한 사진으로 교체할 수 있습니다.</p>
+          <p>2. Daily Meal Plan은 실제로 기록된 아침/점심/저녁/간식만 표시합니다.</p>
+          <p>3. Today Summary에서 기준 식사(아/점/저/간)를 고르고, 실제 기록 요약을 확인할 수 있습니다.</p>
+          <p>4. Weekly Detox Rhythm은 최근 7일 기준이며, 중앙 칸이 오늘입니다.</p>
         </div>
       </article>
     </div>

@@ -55,6 +55,20 @@ const sortedUsers = computed(() => {
   return rows;
 });
 
+function toggleSort(column) {
+  if (sortBy.value === column) {
+    sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
+    return;
+  }
+  sortBy.value = column;
+  sortOrder.value = "asc";
+}
+
+function sortIndicator(column) {
+  if (sortBy.value !== column) return "↕";
+  return sortOrder.value === "asc" ? "↑" : "↓";
+}
+
 async function withAuthGuard(fn) {
   try {
     return await fn();
@@ -251,21 +265,6 @@ onMounted(async () => {
         <button class="admin-button secondary" @click="updateRouteQuery">조회</button>
       </div>
 
-      <div class="admin-search-row mt-3">
-        <select v-model="sortBy" class="admin-input">
-          <option value="userId">정렬: ID</option>
-          <option value="email">정렬: 이메일</option>
-          <option value="role">정렬: 권한</option>
-          <option value="status">정렬: 상태</option>
-          <option value="goal">정렬: 목표</option>
-          <option value="strictness">정렬: 강도</option>
-        </select>
-        <select v-model="sortOrder" class="admin-input">
-          <option value="asc">오름차순</option>
-          <option value="desc">내림차순</option>
-        </select>
-      </div>
-
       <p v-if="errorMessage" class="admin-error mt-3">{{ errorMessage }}</p>
       <p v-if="successMessage" class="admin-info mt-3">{{ successMessage }}</p>
 
@@ -273,12 +272,12 @@ onMounted(async () => {
         <table class="admin-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>이메일</th>
-              <th>권한</th>
-              <th>상태</th>
-              <th>목표</th>
-              <th>강도</th>
+              <th><button class="sort-head-button" @click="toggleSort('userId')">ID <span>{{ sortIndicator("userId") }}</span></button></th>
+              <th><button class="sort-head-button" @click="toggleSort('email')">이메일 <span>{{ sortIndicator("email") }}</span></button></th>
+              <th><button class="sort-head-button" @click="toggleSort('role')">권한 <span>{{ sortIndicator("role") }}</span></button></th>
+              <th><button class="sort-head-button" @click="toggleSort('status')">상태 <span>{{ sortIndicator("status") }}</span></button></th>
+              <th><button class="sort-head-button" @click="toggleSort('goal')">목표 <span>{{ sortIndicator("goal") }}</span></button></th>
+              <th><button class="sort-head-button" @click="toggleSort('strictness')">강도 <span>{{ sortIndicator("strictness") }}</span></button></th>
               <th>알레르기</th>
               <th>액션</th>
             </tr>

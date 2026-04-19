@@ -87,13 +87,24 @@ async function mergeWithDayRecord() {
 
   mergeLoading.value = true;
   try {
-    const serverItems = await cartStore.fetchTodayRemote(loggedDate.value);
+    const serverMeals = await cartStore.fetchDayMeals(loggedDate.value);
+    const serverItems = (serverMeals || [])
+      .flatMap((meal) => meal.items || [])
+      .map((item) => ({
+        foodId: item.foodId,
+        quantity: Number(item.quantity || 0),
+        name: item.foodName || `식품 ID ${item.foodId}`,
+        category: item.category || "기타",
+        calories: Number(item.calories || 0),
+      }))
+      .filter((item) => item.foodId && item.quantity > 0);
+
     if (!serverItems.length) {
       successMessage.value = "해당 날짜 서버 식단 기록이 없어 병합할 항목이 없습니다.";
       return;
     }
     cartStore.mergeWithServerItems(serverItems);
-    successMessage.value = "로컬 초안과 서버 기록을 병합했습니다.";
+    successMessage.value = "서버 기록 식단 항목을 현재 로컬 초안에 합쳤습니다.";
     await loadRemoteMeals();
   } catch (error) {
     errorMessage.value = error?.response?.data?.message ?? "병합 중 오류가 발생했습니다.";
@@ -284,8 +295,12 @@ onUnmounted(() => {
 
       <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
         <p class="font-semibold text-slate-900">사용 가이드</p>
-        <p class="mt-1">1) 로컬 초안에서 음식 수량을 맞춘 뒤, 2) 식사 타입/날짜를 선택하고, 3) [식단 동기화]를 누르세요.</p>
-        <p class="mt-1">서버 기록은 아래 Server Meals에서 바로 수정/삭제할 수 있습니다.</p>
+        <p class="mt-2"><strong>1</strong><br />로컬 초안에서 음식 수량을 맞춥니다.</p>
+        <p class="mt-2"><strong>2</strong><br />식사 타입과 날짜를 선택합니다.</p>
+        <p class="mt-2"><strong>3</strong><br />[식단 동기화]를 눌러 서버에 저장합니다.</p>
+        <p class="mt-2 text-xs text-slate-600">
+          서버 기록 병합: 선택 날짜의 서버 식단 항목을 로컬 초안에 가져와 함께 편집할 때 사용합니다.
+        </p>
       </div>
 
       <div class="mt-4 grid gap-2 sm:grid-cols-4">

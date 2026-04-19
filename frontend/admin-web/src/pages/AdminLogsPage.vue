@@ -24,6 +24,34 @@ const policySortOrder = ref("desc");
 const hallucinationSortBy = ref("createdAt");
 const hallucinationSortOrder = ref("desc");
 
+function togglePolicySort(column) {
+  if (policySortBy.value === column) {
+    policySortOrder.value = policySortOrder.value === "asc" ? "desc" : "asc";
+    return;
+  }
+  policySortBy.value = column;
+  policySortOrder.value = "asc";
+}
+
+function policySortIndicator(column) {
+  if (policySortBy.value !== column) return "↕";
+  return policySortOrder.value === "asc" ? "↑" : "↓";
+}
+
+function toggleHallucinationSort(column) {
+  if (hallucinationSortBy.value === column) {
+    hallucinationSortOrder.value = hallucinationSortOrder.value === "asc" ? "desc" : "asc";
+    return;
+  }
+  hallucinationSortBy.value = column;
+  hallucinationSortOrder.value = "asc";
+}
+
+function hallucinationSortIndicator(column) {
+  if (hallucinationSortBy.value !== column) return "↕";
+  return hallucinationSortOrder.value === "asc" ? "↑" : "↓";
+}
+
 function asDateNumber(value) {
   const time = new Date(value || "").getTime();
   return Number.isFinite(time) ? time : 0;
@@ -185,27 +213,14 @@ onMounted(async () => {
           <button class="admin-button secondary" @click="refresh">조회</button>
         </div>
 
-        <div class="admin-search-row mt-3">
-          <select v-model="policySortBy" class="admin-input">
-            <option value="createdAt">정렬: 시각</option>
-            <option value="violationCategory">정렬: 카테고리</option>
-            <option value="confidenceScore">정렬: 신뢰도</option>
-            <option value="userEmailMasked">정렬: 사용자</option>
-          </select>
-          <select v-model="policySortOrder" class="admin-input">
-            <option value="desc">내림차순</option>
-            <option value="asc">오름차순</option>
-          </select>
-        </div>
-
         <div class="mt-3 overflow-x-auto">
           <table class="admin-table">
             <thead>
               <tr>
-                <th>시각</th>
-                <th>사용자</th>
-                <th>카테고리</th>
-                <th>신뢰도</th>
+                <th><button class="sort-head-button" @click="togglePolicySort('createdAt')">시각 <span>{{ policySortIndicator("createdAt") }}</span></button></th>
+                <th><button class="sort-head-button" @click="togglePolicySort('userEmailMasked')">사용자 <span>{{ policySortIndicator("userEmailMasked") }}</span></button></th>
+                <th><button class="sort-head-button" @click="togglePolicySort('violationCategory')">카테고리 <span>{{ policySortIndicator("violationCategory") }}</span></button></th>
+                <th><button class="sort-head-button" @click="togglePolicySort('confidenceScore')">신뢰도 <span>{{ policySortIndicator("confidenceScore") }}</span></button></th>
                 <th>입력 요약</th>
               </tr>
             </thead>
@@ -228,25 +243,13 @@ onMounted(async () => {
           <button class="admin-button secondary" @click="refresh">조회</button>
         </div>
 
-        <div class="admin-search-row mt-3">
-          <select v-model="hallucinationSortBy" class="admin-input">
-            <option value="createdAt">정렬: 시각</option>
-            <option value="modelVersion">정렬: 모델 버전</option>
-            <option value="failedReason">정렬: 실패 사유</option>
-          </select>
-          <select v-model="hallucinationSortOrder" class="admin-input">
-            <option value="desc">내림차순</option>
-            <option value="asc">오름차순</option>
-          </select>
-        </div>
-
         <div class="mt-3 overflow-x-auto">
           <table class="admin-table">
             <thead>
               <tr>
-                <th>시각</th>
-                <th>모델 버전</th>
-                <th>실패 사유</th>
+                <th><button class="sort-head-button" @click="toggleHallucinationSort('createdAt')">시각 <span>{{ hallucinationSortIndicator("createdAt") }}</span></button></th>
+                <th><button class="sort-head-button" @click="toggleHallucinationSort('modelVersion')">모델 버전 <span>{{ hallucinationSortIndicator("modelVersion") }}</span></button></th>
+                <th><button class="sort-head-button" @click="toggleHallucinationSort('failedReason')">실패 사유 <span>{{ hallucinationSortIndicator("failedReason") }}</span></button></th>
                 <th>프롬프트 요약</th>
                 <th>응답 요약</th>
               </tr>

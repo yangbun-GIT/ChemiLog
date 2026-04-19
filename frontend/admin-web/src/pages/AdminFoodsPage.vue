@@ -50,6 +50,20 @@ const sortedFoods = computed(() => {
   return rows;
 });
 
+function toggleSort(column) {
+  if (sortBy.value === column) {
+    sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
+    return;
+  }
+  sortBy.value = column;
+  sortOrder.value = "asc";
+}
+
+function sortIndicator(column) {
+  if (sortBy.value !== column) return "↕";
+  return sortOrder.value === "asc" ? "↑" : "↓";
+}
+
 function parseAdditiveIds(text) {
   return String(text || "")
     .split(",")
@@ -205,7 +219,7 @@ onMounted(async () => {
 
     <article class="admin-card mt-4">
       <h2>{{ editingFoodId ? `식품 수정 #${editingFoodId}` : "식품 신규 등록" }}</h2>
-      <div class="mt-3 grid gap-3 md:grid-cols-2">
+      <div class="admin-form-grid mt-4 md:grid-cols-2">
         <label>
           <span class="admin-muted">식품명</span>
           <input v-model="form.name" class="admin-input" />
@@ -275,29 +289,15 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="admin-search-row mt-3">
-          <select v-model="sortBy" class="admin-input">
-            <option value="foodId">정렬: ID</option>
-            <option value="name">정렬: 식품명</option>
-            <option value="category">정렬: 카테고리</option>
-            <option value="manufacturer">정렬: 제조사</option>
-            <option value="calories">정렬: 칼로리</option>
-          </select>
-          <select v-model="sortOrder" class="admin-input">
-            <option value="asc">오름차순</option>
-            <option value="desc">내림차순</option>
-          </select>
-        </div>
-
         <div class="mt-3 overflow-x-auto">
           <table class="admin-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>식품명</th>
-                <th>카테고리</th>
-                <th>제조사</th>
-                <th>칼로리</th>
+                <th><button class="sort-head-button" @click="toggleSort('foodId')">ID <span>{{ sortIndicator("foodId") }}</span></button></th>
+                <th><button class="sort-head-button" @click="toggleSort('name')">식품명 <span>{{ sortIndicator("name") }}</span></button></th>
+                <th><button class="sort-head-button" @click="toggleSort('category')">카테고리 <span>{{ sortIndicator("category") }}</span></button></th>
+                <th><button class="sort-head-button" @click="toggleSort('manufacturer')">제조사 <span>{{ sortIndicator("manufacturer") }}</span></button></th>
+                <th><button class="sort-head-button" @click="toggleSort('calories')">칼로리 <span>{{ sortIndicator("calories") }}</span></button></th>
                 <th>이미지</th>
                 <th>작업</th>
               </tr>
@@ -331,14 +331,14 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="mt-3 overflow-x-auto">
-          <table class="admin-table">
+        <div class="mt-3">
+          <table class="admin-table is-fixed">
             <thead>
               <tr>
-                <th>키워드</th>
-                <th>요청 수</th>
-                <th>최근 시각</th>
-                <th>작업</th>
+                <th style="width: 32%">키워드</th>
+                <th style="width: 10%">요청 수</th>
+                <th style="width: 24%">최근 시각</th>
+                <th style="width: 34%">작업</th>
               </tr>
             </thead>
             <tbody>
@@ -347,10 +347,10 @@ onMounted(async () => {
                 <td>{{ miss.hitCount }}</td>
                 <td>{{ miss.lastSeenAt }}</td>
                 <td>
-                  <div class="inline-flex gap-1">
-                    <button class="admin-button secondary" @click="applyMissKeywordToFoodForm(miss)">식품 등록폼 채우기</button>
-                    <button class="admin-button secondary" @click="openAdditivePageWithKeyword(miss)">첨가물 등록 이동</button>
-                    <button class="admin-button secondary" @click="resolveMiss(miss.missId, true)">처리완료</button>
+                  <div class="admin-action-stack">
+                    <button class="admin-button secondary" @click="applyMissKeywordToFoodForm(miss)">식품 등록폼</button>
+                    <button class="admin-button secondary" @click="openAdditivePageWithKeyword(miss)">첨가물 이동</button>
+                    <button class="admin-button secondary" @click="resolveMiss(miss.missId, true)">완료</button>
                   </div>
                 </td>
               </tr>

@@ -1,4 +1,4 @@
-import { defineStore } from "pinia";
+﻿import { defineStore } from "pinia";
 import api from "../api/client";
 
 const CART_STORAGE_KEY = "chemilog.customer.cart.v4";
@@ -91,7 +91,7 @@ export const useCartStore = defineStore("cartStore", {
         },
         SYNCING: {
           label: "동기화 중",
-          description: "서버에 식단을 저장 중입니다.",
+          description: "서버에 식단을 저장하는 중입니다.",
         },
         COMMITTED: {
           label: "서버 저장 완료",
@@ -99,7 +99,7 @@ export const useCartStore = defineStore("cartStore", {
         },
         SYNC_FAILED: {
           label: "동기화 실패",
-          description: "네트워크 또는 인증 오류입니다. 재시도해주세요.",
+          description: "네트워크 또는 입력 오류입니다. 다시 시도해 주세요.",
         },
       };
       return map[state.syncStatus] ?? map.LOCAL_DRAFT;
@@ -385,15 +385,28 @@ export const useCartStore = defineStore("cartStore", {
         const remoteFoodId = toNumber(remote.foodId ?? remote.food_id);
         if (!remoteFoodId) continue;
         const remoteQuantity = toNumber(remote.quantity, 1);
+        const remoteName = String(remote.name ?? remote.foodName ?? `식품 ID ${remoteFoodId}`);
+        const remoteCategory = String(remote.category ?? "기타");
+        const remoteCalories = toNumber(remote.calories ?? remote.kcal, 0);
+
         const existing = merged.get(remoteFoodId);
         if (existing) {
           existing.quantity = Number(existing.quantity) + remoteQuantity;
+          if (!existing.name && remoteName) {
+            existing.name = remoteName;
+          }
+          if ((!existing.category || existing.category === "기타") && remoteCategory) {
+            existing.category = remoteCategory;
+          }
+          if (!Number(existing.calories) && Number.isFinite(remoteCalories)) {
+            existing.calories = remoteCalories;
+          }
         } else {
           merged.set(remoteFoodId, {
             foodId: remoteFoodId,
-            name: `Food #${remoteFoodId}`,
-            category: "기타",
-            calories: 0,
+            name: remoteName,
+            category: remoteCategory,
+            calories: remoteCalories,
             additiveIds: [],
             quantity: remoteQuantity,
           });
@@ -407,11 +420,11 @@ export const useCartStore = defineStore("cartStore", {
     },
     async syncToServer(mealType = "LUNCH", loggedDate = todayDateString()) {
       if (this.items.length === 0) {
-        throw new Error("장바구니가 비어 있습니다.");
+        throw new Error("?λ컮援щ땲媛 鍮꾩뼱 ?덉뒿?덈떎.");
       }
       if (!navigator.onLine) {
         this.syncStatus = "SYNC_FAILED";
-        this.syncError = "오프라인 상태입니다. 온라인으로 전환 후 다시 시도해주세요.";
+        this.syncError = "?ㅽ봽?쇱씤 ?곹깭?낅땲?? ?⑤씪?몄쑝濡??꾪솚 ???ㅼ떆 ?쒕룄?댁＜?몄슂.";
         this.persistMeta();
         throw new Error(this.syncError);
       }
@@ -457,7 +470,7 @@ export const useCartStore = defineStore("cartStore", {
         this.syncError =
           error?.response?.data?.message ??
           error?.message ??
-          "식단 동기화에 실패했습니다. 잠시 후 다시 시도해주세요.";
+          "?앸떒 ?숆린?붿뿉 ?ㅽ뙣?덉뒿?덈떎. ?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.";
         this.persistMeta();
         throw error;
       } finally {
@@ -477,3 +490,5 @@ export const useCartStore = defineStore("cartStore", {
     },
   },
 });
+
+

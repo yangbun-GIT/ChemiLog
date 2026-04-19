@@ -382,6 +382,11 @@ body {
   gap: 0.45rem;
 }
 
+.admin-form-grid {
+  display: grid;
+  gap: 1rem 1.1rem;
+}
+
 .admin-input {
   border: 1px solid #cbd5e1;
   border-radius: 0.7rem;
@@ -401,6 +406,44 @@ body {
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.2rem 0.58rem;
+}
+
+.sort-head-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sort-head-button span {
+  font-size: 0.75rem;
+  line-height: 1;
+  color: #64748b;
+}
+
+.sort-head-button:hover span {
+  color: #0891b2;
+}
+
+.admin-table.is-fixed {
+  table-layout: fixed;
+}
+
+.admin-table.is-fixed th,
+.admin-table.is-fixed td {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.admin-action-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 .danger-chip.is-red {

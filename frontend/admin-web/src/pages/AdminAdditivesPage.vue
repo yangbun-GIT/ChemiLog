@@ -43,6 +43,20 @@ const sortedAdditives = computed(() => {
   return rows;
 });
 
+function toggleSort(column) {
+  if (sortBy.value === column) {
+    sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
+    return;
+  }
+  sortBy.value = column;
+  sortOrder.value = "asc";
+}
+
+function sortIndicator(column) {
+  if (sortBy.value !== column) return "↕";
+  return sortOrder.value === "asc" ? "↑" : "↓";
+}
+
 function resetForm() {
   editingAdditiveId.value = null;
   form.value = {
@@ -169,7 +183,7 @@ onMounted(async () => {
 
     <article class="admin-card mt-4">
       <h2>{{ editingAdditiveId ? `첨가물 수정 #${editingAdditiveId}` : "첨가물 신규 등록" }}</h2>
-      <div class="mt-3 grid gap-3 md:grid-cols-2">
+      <div class="admin-form-grid mt-4 md:grid-cols-2">
         <label>
           <span class="admin-muted">첨가물명</span>
           <input v-model="form.name" class="admin-input" placeholder="예: 아스파탐" />
@@ -206,30 +220,16 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="admin-search-row mt-3">
-          <select v-model="sortBy" class="admin-input">
-            <option value="additiveId">정렬: ID</option>
-            <option value="name">정렬: 첨가물명</option>
-            <option value="purpose">정렬: 용도</option>
-            <option value="dangerLevel">정렬: 위험도</option>
-            <option value="mappedFoodCount">정렬: 매핑 식품 수</option>
-          </select>
-          <select v-model="sortOrder" class="admin-input">
-            <option value="asc">오름차순</option>
-            <option value="desc">내림차순</option>
-          </select>
-        </div>
-
         <div class="mt-3 overflow-x-auto">
           <table class="admin-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>첨가물명</th>
-                <th>용도</th>
-                <th>위험도</th>
+                <th><button class="sort-head-button" @click="toggleSort('additiveId')">ID <span>{{ sortIndicator("additiveId") }}</span></button></th>
+                <th><button class="sort-head-button" @click="toggleSort('name')">첨가물명 <span>{{ sortIndicator("name") }}</span></button></th>
+                <th><button class="sort-head-button" @click="toggleSort('purpose')">용도 <span>{{ sortIndicator("purpose") }}</span></button></th>
+                <th><button class="sort-head-button" @click="toggleSort('dangerLevel')">위험도 <span>{{ sortIndicator("dangerLevel") }}</span></button></th>
                 <th>ADI</th>
-                <th>매핑 식품</th>
+                <th><button class="sort-head-button" @click="toggleSort('mappedFoodCount')">매핑 식품 <span>{{ sortIndicator("mappedFoodCount") }}</span></button></th>
                 <th>작업</th>
               </tr>
             </thead>
@@ -263,14 +263,14 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="mt-3 overflow-x-auto">
-          <table class="admin-table">
+        <div class="mt-3">
+          <table class="admin-table is-fixed">
             <thead>
               <tr>
-                <th>키워드</th>
-                <th>요청 수</th>
-                <th>최근 시각</th>
-                <th>작업</th>
+                <th style="width: 34%">키워드</th>
+                <th style="width: 12%">요청 수</th>
+                <th style="width: 24%">최근 시각</th>
+                <th style="width: 30%">작업</th>
               </tr>
             </thead>
             <tbody>
@@ -279,9 +279,9 @@ onMounted(async () => {
                 <td>{{ miss.hitCount }}</td>
                 <td>{{ miss.lastSeenAt }}</td>
                 <td>
-                  <div class="inline-flex gap-1">
+                  <div class="admin-action-stack">
                     <button class="admin-button secondary" @click="applyMissKeywordToForm(miss)">등록폼 채우기</button>
-                    <button class="admin-button secondary" @click="resolveMiss(miss.missId, true)">처리완료</button>
+                    <button class="admin-button secondary" @click="resolveMiss(miss.missId, true)">완료</button>
                   </div>
                 </td>
               </tr>
