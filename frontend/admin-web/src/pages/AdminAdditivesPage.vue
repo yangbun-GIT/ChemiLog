@@ -13,6 +13,10 @@ const additivesPage = ref({ items: [] });
 const keyword = ref("");
 const sortBy = ref("additiveId");
 const sortOrder = ref("asc");
+const PAGE_SIZE = 100;
+const DEFAULT_VISIBLE_COUNT = 30;
+const visibleCount = ref(DEFAULT_VISIBLE_COUNT);
+const showAllRows = ref(false);
 
 const missPage = ref({ items: [] });
 const missKeyword = ref("");
@@ -42,6 +46,32 @@ const sortedAdditives = computed(() => {
 
   return rows;
 });
+
+const visibleAdditives = computed(() => {
+  if (showAllRows.value) return sortedAdditives.value;
+  return sortedAdditives.value.slice(0, visibleCount.value);
+});
+
+const canShowMore = computed(() => !showAllRows.value && visibleCount.value < sortedAdditives.value.length);
+const canShowAll = computed(() => !showAllRows.value && sortedAdditives.value.length > DEFAULT_VISIBLE_COUNT);
+const canCollapse = computed(() => showAllRows.value || visibleCount.value > DEFAULT_VISIBLE_COUNT);
+
+function resetVisibleRows() {
+  visibleCount.value = DEFAULT_VISIBLE_COUNT;
+  showAllRows.value = false;
+}
+
+function showMoreRows() {
+  visibleCount.value = Math.min(sortedAdditives.value.length, visibleCount.value + DEFAULT_VISIBLE_COUNT);
+}
+
+function showAll() {
+  showAllRows.value = true;
+}
+
+function collapseRows() {
+  resetVisibleRows();
+}
 
 function toggleSort(column) {
   if (sortBy.value === column) {
@@ -88,14 +118,40 @@ async function loadAdditives() {
   loading.value = true;
   errorMessage.value = "";
   try {
-    const response = await api.get("/admin/data/additives", {
-      params: {
-        keyword: keyword.value || undefined,
-        page: 0,
-        size: 100,
+    const baseParams = {
+      keyword: keyword.value || undefined,
+      size: PAGE_SIZE,
+    };
+    let page = 0;
+    let totalPages = 1;
+    let totalElements = 0;
+    const mergedItems = [];
+
+    while (page < totalPages) {
+      const response = await api.get("/admin/data/additives", {
+        params: {
+          ...baseParams,
+          page,
+        },
+      });
+      const data = response.data?.data ?? {};
+      const pageInfo = data.pageInfo ?? data.page_info ?? {};
+      mergedItems.push(...(data.items ?? []));
+      totalPages = Number(pageInfo.totalPages ?? pageInfo.total_pages ?? 1);
+      totalElements = Number(pageInfo.totalElements ?? pageInfo.total_elements ?? mergedItems.length);
+      page += 1;
+    }
+
+    additivesPage.value = {
+      items: mergedItems,
+      pageInfo: {
+        currentPage: 0,
+        totalPages,
+        totalElements,
+        hasNext: false,
       },
-    });
-    additivesPage.value = response.data?.data ?? { items: [] };
+    };
+    resetVisibleRows();
   } catch (error) {
     errorMessage.value = error?.response?.data?.message ?? "첨가물 목록을 불러오지 못했습니다.";
   } finally {
@@ -219,6 +275,9 @@ onMounted(async () => {
             <button class="admin-button secondary" :disabled="loading" @click="loadAdditives">조회</button>
           </div>
         </div>
+        <p class="admin-muted mt-2">
+          총 {{ additivesPage.pageInfo?.totalElements ?? sortedAdditives.length }}건 · 표시 {{ visibleAdditives.length }}건
+        </p>
 
         <div class="mt-3">
           <table class="admin-table is-fixed">
@@ -234,7 +293,7 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in sortedAdditives" :key="row.additiveId">
+              <tr v-for="row in visibleAdditives" :key="row.additiveId">
                 <td>{{ row.additiveId }}</td>
                 <td>{{ row.name }}</td>
                 <td>{{ row.purpose || "-" }}</td>
@@ -251,6 +310,11 @@ onMounted(async () => {
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="sortedAdditives.length > DEFAULT_VISIBLE_COUNT" class="mt-3 flex flex-wrap items-center gap-2">
+          <button v-if="canShowMore" class="admin-button secondary" @click="showMoreRows">30개 더보기</button>
+          <button v-if="canShowAll" class="admin-button secondary" @click="showAll">전체보기</button>
+          <button v-if="canCollapse" class="admin-button secondary" @click="collapseRows">접기</button>
         </div>
       </article>
 

@@ -10,6 +10,7 @@ const authStore = useAdminAuthStore();
 const loading = ref(false);
 const errorMessage = ref("");
 const summary = ref(null);
+let summaryRequestId = 0;
 
 const cards = computed(() => {
   const s = summary.value;
@@ -56,18 +57,23 @@ async function withAuthGuard(fn) {
 
 async function loadSummary() {
   const response = await withAuthGuard(() => api.get("/admin/dashboard/summary"));
-  if (!response) return;
-  summary.value = response.data?.data ?? null;
+  if (!response) return null;
+  return response.data?.data ?? null;
 }
 
 async function refresh() {
+  const requestId = ++summaryRequestId;
   loading.value = true;
   errorMessage.value = "";
   try {
-    await loadSummary();
+    const nextSummary = await loadSummary();
+    if (requestId !== summaryRequestId) return;
+    summary.value = nextSummary;
   } catch (error) {
+    if (requestId !== summaryRequestId) return;
     errorMessage.value = error?.response?.data?.message ?? "대시보드 데이터를 불러오지 못했습니다.";
   } finally {
+    if (requestId !== summaryRequestId) return;
     loading.value = false;
   }
 }

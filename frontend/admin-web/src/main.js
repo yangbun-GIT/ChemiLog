@@ -10,6 +10,7 @@ document.documentElement.style.backgroundColor = "#f5f9fc";
 document.documentElement.style.colorScheme = "light";
 document.body.style.backgroundColor = "#f5f9fc";
 document.body.style.color = "#0f172a";
+document.documentElement.classList.add("app-ready");
 
 const pinia = createPinia();
 const app = createApp(App);

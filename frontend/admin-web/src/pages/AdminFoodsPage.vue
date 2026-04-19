@@ -18,6 +18,10 @@ const sortOrder = ref("asc");
 
 const missPage = ref({ items: [] });
 const missKeyword = ref("");
+const PAGE_SIZE = 100;
+const DEFAULT_VISIBLE_COUNT = 30;
+const visibleCount = ref(DEFAULT_VISIBLE_COUNT);
+const showAllRows = ref(false);
 
 const editingFoodId = ref(null);
 const form = ref({
@@ -49,6 +53,32 @@ const sortedFoods = computed(() => {
 
   return rows;
 });
+
+const visibleFoods = computed(() => {
+  if (showAllRows.value) return sortedFoods.value;
+  return sortedFoods.value.slice(0, visibleCount.value);
+});
+
+const canShowMore = computed(() => !showAllRows.value && visibleCount.value < sortedFoods.value.length);
+const canShowAll = computed(() => !showAllRows.value && sortedFoods.value.length > DEFAULT_VISIBLE_COUNT);
+const canCollapse = computed(() => showAllRows.value || visibleCount.value > DEFAULT_VISIBLE_COUNT);
+
+function resetVisibleRows() {
+  visibleCount.value = DEFAULT_VISIBLE_COUNT;
+  showAllRows.value = false;
+}
+
+function showMoreRows() {
+  visibleCount.value = Math.min(sortedFoods.value.length, visibleCount.value + DEFAULT_VISIBLE_COUNT);
+}
+
+function showAll() {
+  showAllRows.value = true;
+}
+
+function collapseRows() {
+  resetVisibleRows();
+}
 
 function toggleSort(column) {
   if (sortBy.value === column) {
@@ -111,15 +141,41 @@ async function loadFoods() {
   loading.value = true;
   errorMessage.value = "";
   try {
-    const response = await api.get("/admin/data/foods", {
-      params: {
-        keyword: keyword.value || undefined,
-        category: category.value || undefined,
-        page: 0,
-        size: 100,
+    const baseParams = {
+      keyword: keyword.value || undefined,
+      category: category.value || undefined,
+      size: PAGE_SIZE,
+    };
+    let page = 0;
+    let totalPages = 1;
+    let totalElements = 0;
+    const mergedItems = [];
+
+    while (page < totalPages) {
+      const response = await api.get("/admin/data/foods", {
+        params: {
+          ...baseParams,
+          page,
+        },
+      });
+      const data = response.data?.data ?? {};
+      const pageInfo = data.pageInfo ?? data.page_info ?? {};
+      mergedItems.push(...(data.items ?? []));
+      totalPages = Number(pageInfo.totalPages ?? pageInfo.total_pages ?? 1);
+      totalElements = Number(pageInfo.totalElements ?? pageInfo.total_elements ?? mergedItems.length);
+      page += 1;
+    }
+
+    foodsPage.value = {
+      items: mergedItems,
+      pageInfo: {
+        currentPage: 0,
+        totalPages,
+        totalElements,
+        hasNext: false,
       },
-    });
-    foodsPage.value = response.data?.data ?? { items: [] };
+    };
+    resetVisibleRows();
   } catch (error) {
     errorMessage.value = error?.response?.data?.message ?? "식품 목록을 불러오지 못했습니다.";
   } finally {
@@ -288,6 +344,9 @@ onMounted(async () => {
             <button class="admin-button secondary" @click="loadFoods">조회</button>
           </div>
         </div>
+        <p class="admin-muted mt-2">
+          총 {{ foodsPage.pageInfo?.totalElements ?? sortedFoods.length }}건 · 표시 {{ visibleFoods.length }}건
+        </p>
 
         <div class="mt-3">
           <table class="admin-table is-fixed">
@@ -303,7 +362,7 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="food in sortedFoods" :key="food.foodId">
+              <tr v-for="food in visibleFoods" :key="food.foodId">
                 <td>{{ food.foodId }}</td>
                 <td>{{ food.name }}</td>
                 <td>{{ food.category }}</td>
@@ -319,6 +378,11 @@ onMounted(async () => {
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="sortedFoods.length > DEFAULT_VISIBLE_COUNT" class="mt-3 flex flex-wrap items-center gap-2">
+          <button v-if="canShowMore" class="admin-button secondary" @click="showMoreRows">30개 더보기</button>
+          <button v-if="canShowAll" class="admin-button secondary" @click="showAll">전체보기</button>
+          <button v-if="canCollapse" class="admin-button secondary" @click="collapseRows">접기</button>
         </div>
       </article>
 
