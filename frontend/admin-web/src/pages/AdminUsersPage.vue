@@ -65,8 +65,8 @@ function toggleSort(column) {
 }
 
 function sortIndicator(column) {
-  if (sortBy.value !== column) return "↕";
-  return sortOrder.value === "asc" ? "↑" : "↓";
+  if (sortBy.value !== column) return "˄˅";
+  return sortOrder.value === "asc" ? "˄" : "˅";
 }
 
 async function withAuthGuard(fn) {

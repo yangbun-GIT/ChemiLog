@@ -21,7 +21,7 @@ function normalizeDate(value, fallback) {
   return /^\d{4}-\d{2}-\d{2}$/u.test(text) ? text : fallback;
 }
 
-const mealType = ref(normalizeMealType(route.query.mealType, "LUNCH"));
+const mealType = ref(normalizeMealType(route.query.mealType || cartStore.preferredMealType, "LUNCH"));
 const loggedDate = ref(normalizeDate(route.query.date, cartStore.todayKey));
 const followToday = ref(true);
 
@@ -244,6 +244,10 @@ watch(loggedDate, async () => {
   await loadRemoteMeals();
 });
 
+watch(mealType, (next) => {
+  cartStore.setPreferredMealType(next);
+});
+
 watch(
   () => route.query,
   async (query) => {
@@ -295,9 +299,9 @@ onUnmounted(() => {
 
       <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
         <p class="font-semibold text-slate-900">사용 가이드</p>
-        <p class="mt-2"><strong>1</strong><br />로컬 초안에서 음식 수량을 맞춥니다.</p>
-        <p class="mt-2"><strong>2</strong><br />식사 타입과 날짜를 선택합니다.</p>
-        <p class="mt-2"><strong>3</strong><br />[식단 동기화]를 눌러 서버에 저장합니다.</p>
+        <p class="mt-2"><strong>1)</strong> 로컬 초안에서 음식 수량을 맞춥니다.</p>
+        <p class="mt-2"><strong>2)</strong> 식사 타입과 날짜를 선택합니다.</p>
+        <p class="mt-2"><strong>3)</strong> [식단 동기화]를 눌러 서버에 저장합니다.</p>
         <p class="mt-2 text-xs text-slate-600">
           서버 기록 병합: 선택 날짜의 서버 식단 항목을 로컬 초안에 가져와 함께 편집할 때 사용합니다.
         </p>

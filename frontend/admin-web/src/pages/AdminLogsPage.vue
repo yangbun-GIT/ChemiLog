@@ -34,8 +34,8 @@ function togglePolicySort(column) {
 }
 
 function policySortIndicator(column) {
-  if (policySortBy.value !== column) return "↕";
-  return policySortOrder.value === "asc" ? "↑" : "↓";
+  if (policySortBy.value !== column) return "˄˅";
+  return policySortOrder.value === "asc" ? "˄" : "˅";
 }
 
 function toggleHallucinationSort(column) {
@@ -48,8 +48,8 @@ function toggleHallucinationSort(column) {
 }
 
 function hallucinationSortIndicator(column) {
-  if (hallucinationSortBy.value !== column) return "↕";
-  return hallucinationSortOrder.value === "asc" ? "↑" : "↓";
+  if (hallucinationSortBy.value !== column) return "˄˅";
+  return hallucinationSortOrder.value === "asc" ? "˄" : "˅";
 }
 
 function asDateNumber(value) {

@@ -5,6 +5,7 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: only light;
   --brand-teal: #00b8c8;
   --brand-green: #14b26b;
   --brand-orange: #f28b30;
@@ -25,6 +26,8 @@ html,
 body,
 #app {
   margin: 0;
+  width: 100%;
+  height: 100%;
   min-height: 100%;
   background-color: #f7fcfa;
 }
@@ -32,10 +35,26 @@ body,
 body {
   background-color: #f7fcfa;
   background:
+    linear-gradient(rgba(15, 23, 42, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.02) 1px, transparent 1px),
     radial-gradient(circle at 10% 0%, rgba(20, 178, 107, 0.16), transparent 38%),
     radial-gradient(circle at 90% 0%, rgba(0, 184, 200, 0.14), transparent 40%),
     radial-gradient(circle at 50% 110%, rgba(242, 139, 48, 0.12), transparent 45%),
     linear-gradient(180deg, #f7fcfa 0%, #eef5f8 100%);
+  background-size:
+    24px 24px,
+    24px 24px,
+    auto,
+    auto,
+    auto,
+    auto;
+  background-position:
+    0 0,
+    0 0,
+    center,
+    center,
+    center,
+    center;
   color: var(--ink-900);
   font-family: "Manrope", "Noto Sans KR", sans-serif;
 }
@@ -48,7 +67,14 @@ body {
 
 .app-shell::before,
 .app-shell::after {
-  display: none;
+  display: block;
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+  filter: blur(2px);
+  opacity: 0.72;
+  z-index: 0;
 }
 
 .app-shell::before {
@@ -220,6 +246,8 @@ body {
 
 .bento-card {
   padding: 1rem;
+  position: relative;
+  isolation: isolate;
   transition: transform 180ms ease, box-shadow 220ms ease, border-color 220ms ease;
 }
 
@@ -227,6 +255,16 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
   border-color: #d1ecf4;
+}
+
+.bento-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.35), transparent 36%);
+  z-index: -1;
 }
 
 .glass-card {
@@ -238,6 +276,7 @@ body {
   font-size: clamp(1.5rem, 2.4vw, 2rem);
   font-family: "Outfit", "Manrope", sans-serif;
   color: #0f172a;
+  animation: reveal-title 420ms ease both;
 }
 
 .eyebrow {
@@ -386,9 +425,9 @@ body {
 }
 
 .heat-grid-week-compact {
-  gap: 0.24rem;
-  grid-template-columns: repeat(7, 22px);
-  justify-content: space-between;
+  gap: 0.4rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  width: 100%;
 }
 
 .heat-label-grid {
@@ -428,8 +467,9 @@ body {
 }
 
 .heat-cell-compact {
-  aspect-ratio: 1 / 1;
-  min-height: unset;
+  aspect-ratio: unset;
+  width: 100%;
+  height: 18px;
   border-radius: 6px;
 }
 
@@ -438,19 +478,19 @@ body {
 }
 
 .heat-1 {
-  background: #fca5a5;
+  background: #dc2626;
 }
 
 .heat-2 {
-  background: #86efac;
+  background: #22c55e;
 }
 
 .heat-3 {
-  background: #4ade80;
+  background: #38bdf8;
 }
 
 .heat-4 {
-  background: #16a34a;
+  background: #2563eb;
 }
 
 .heat-draft {
@@ -653,6 +693,19 @@ body {
 @keyframes shimmer {
   to {
     background-position-x: -200%;
+  }
+}
+
+@keyframes reveal-title {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+    letter-spacing: 0.04em;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    letter-spacing: 0;
   }
 }
 

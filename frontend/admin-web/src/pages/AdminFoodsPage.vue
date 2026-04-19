@@ -60,8 +60,8 @@ function toggleSort(column) {
 }
 
 function sortIndicator(column) {
-  if (sortBy.value !== column) return "↕";
-  return sortOrder.value === "asc" ? "↑" : "↓";
+  if (sortBy.value !== column) return "˄˅";
+  return sortOrder.value === "asc" ? "˄" : "˅";
 }
 
 function parseAdditiveIds(text) {
@@ -278,7 +278,7 @@ onMounted(async () => {
       <p v-if="successMessage" class="admin-info mt-3">{{ successMessage }}</p>
     </article>
 
-    <section class="admin-grid-2 mt-4">
+    <section class="mt-4 space-y-4">
       <article class="admin-card">
         <div class="admin-table-head">
           <h2>식품 목록</h2>
@@ -289,8 +289,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="mt-3 overflow-x-auto">
-          <table class="admin-table">
+        <div class="mt-3">
+          <table class="admin-table is-fixed">
             <thead>
               <tr>
                 <th><button class="sort-head-button" @click="toggleSort('foodId')">ID <span>{{ sortIndicator("foodId") }}</span></button></th>

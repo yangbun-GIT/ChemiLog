@@ -31,7 +31,7 @@ const recommendationLoading = ref(false);
 const recommendationError = ref("");
 const recommendationSeed = ref(String(Date.now()));
 const mealTypeOptions = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"];
-const selectedSummaryMealType = ref(inferDefaultMealType());
+const selectedSummaryMealType = ref(cartStore.preferredMealType || inferDefaultMealType());
 const MEAL_ORDER = {
   BREAKFAST: 0,
   LUNCH: 1,
@@ -254,13 +254,14 @@ function mealTypeLabel(type) {
   return map[type] ?? type;
 }
 
-function addFoodToCart(food) {
+function addFoodToCart(food, mealTypeHint = selectedSummaryMealType.value) {
   cartStore.addFood({
     foodId: food.foodId,
     name: food.name,
     category: food.category || "기타",
     calories: Number(food.calories || 0),
     additiveIds: food.additiveIds || [],
+    mealTypeHint,
     quantity: 1,
   });
 }
@@ -399,7 +400,12 @@ async function rerollRecommendation() {
 
 function addRecommendedFood(recommendationItem) {
   if (!recommendationItem?.food) return;
-  addFoodToCart(recommendationItem.food);
+  const targetMealType = String(recommendationItem.mealType || "").toUpperCase();
+  if (mealTypeOptions.includes(targetMealType)) {
+    selectedSummaryMealType.value = targetMealType;
+    cartStore.setPreferredMealType(targetMealType);
+  }
+  addFoodToCart(recommendationItem.food, mealTypeOptions.includes(targetMealType) ? targetMealType : undefined);
 }
 
 function shortDate(value) {
@@ -431,7 +437,14 @@ watch(todayDate, () => {
   loadTodayMeals();
 });
 
+watch(selectedSummaryMealType, (next) => {
+  cartStore.setPreferredMealType(next);
+});
+
 onMounted(async () => {
+  if (!mealTypeOptions.includes(selectedSummaryMealType.value)) {
+    selectedSummaryMealType.value = inferDefaultMealType();
+  }
   await loadCategories();
   await Promise.all([loadFoods(), loadTodayMeals(), loadRecommendation()]);
 });

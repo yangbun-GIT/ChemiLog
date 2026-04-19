@@ -43,6 +43,7 @@ function normalizeItem(raw) {
     foodId: toNumber(raw.foodId ?? raw.food_id),
     name: String(raw.name ?? "식품"),
     category: String(raw.category ?? "기타"),
+    mealTypeHint: String(raw.mealTypeHint ?? raw.meal_type_hint ?? "").toUpperCase(),
     calories: toNumber(raw.calories),
     additiveIds: Array.isArray(raw.additiveIds ?? raw.additive_ids)
       ? (raw.additiveIds ?? raw.additive_ids).map((id) => toNumber(id)).filter((id) => id > 0)
@@ -69,6 +70,7 @@ export const useCartStore = defineStore("cartStore", {
   state: () => ({
     items: [],
     todayKey: todayDateString(),
+    preferredMealType: "LUNCH",
     syncStatus: "LOCAL_DRAFT",
     isSyncing: false,
     syncError: null,
@@ -244,6 +246,7 @@ export const useCartStore = defineStore("cartStore", {
           this.syncStatus = parsed.syncStatus ?? "LOCAL_DRAFT";
           this.lastSyncResult = parsed.lastSyncResult ?? null;
           this.syncError = parsed.syncError ?? null;
+          this.preferredMealType = String(parsed.preferredMealType || "LUNCH").toUpperCase();
           this.history = Array.isArray(parsed.history)
             ? parsed.history.map(normalizeHistoryDay).filter(Boolean).slice(-365)
             : [];
@@ -251,6 +254,7 @@ export const useCartStore = defineStore("cartStore", {
           this.syncStatus = "LOCAL_DRAFT";
           this.lastSyncResult = null;
           this.syncError = null;
+          this.preferredMealType = "LUNCH";
           this.history = [];
         }
       }
@@ -265,16 +269,29 @@ export const useCartStore = defineStore("cartStore", {
           syncStatus: this.syncStatus,
           syncError: this.syncError,
           lastSyncResult: this.lastSyncResult,
+          preferredMealType: this.preferredMealType,
           history: this.history.slice(-365),
         })
       );
     },
+    setPreferredMealType(next) {
+      const candidate = String(next || "").toUpperCase();
+      if (!["BREAKFAST", "LUNCH", "DINNER", "SNACK"].includes(candidate)) return;
+      this.preferredMealType = candidate;
+      this.persistMeta();
+    },
     addFood(food) {
       const normalized = normalizeItem(food);
       const existing = this.items.find((item) => item.foodId === normalized.foodId);
+      if (normalized.mealTypeHint) {
+        this.preferredMealType = normalized.mealTypeHint;
+      }
       if (existing) {
         existing.quantity = Number(existing.quantity) + Number(normalized.quantity || 1);
         existing.category = normalized.category || existing.category;
+        if (normalized.mealTypeHint) {
+          existing.mealTypeHint = normalized.mealTypeHint;
+        }
         if (!existing.additiveIds?.length && normalized.additiveIds?.length) {
           existing.additiveIds = normalized.additiveIds;
         }
@@ -317,6 +334,7 @@ export const useCartStore = defineStore("cartStore", {
     clearAll() {
       this.items = [];
       this.todayKey = todayDateString();
+      this.preferredMealType = "LUNCH";
       this.syncStatus = "LOCAL_DRAFT";
       this.syncError = null;
       this.lastSyncResult = null;
@@ -406,6 +424,7 @@ export const useCartStore = defineStore("cartStore", {
             foodId: remoteFoodId,
             name: remoteName,
             category: remoteCategory,
+            mealTypeHint: this.preferredMealType,
             calories: remoteCalories,
             additiveIds: [],
             quantity: remoteQuantity,
