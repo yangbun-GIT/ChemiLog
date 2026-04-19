@@ -9,6 +9,9 @@ document.documentElement.style.backgroundColor = "#f7fcfa";
 document.documentElement.style.colorScheme = "light";
 document.body.style.backgroundColor = "#f7fcfa";
 document.body.style.color = "#0f172a";
+document.documentElement.classList.add("app-preload");
+document.documentElement.classList.remove("app-ready");
+document.body.classList.add("app-booting");
 
 const pinia = createPinia();
 setupApiClient(pinia);

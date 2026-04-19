@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="color-scheme" content="light" />
+    <meta name="msapplication-TileColor" content="#f5f9fc" />
+    <meta name="supported-color-schemes" content="light" />
+    <meta name="darkreader-lock" />
+    <meta name="darkreader" content="disable" />
     <meta name="theme-color" content="#f5f9fc" />
     <meta http-equiv="Cache-Control" content="no-store, max-age=0" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,7 +20,63 @@
         background: #f5f9fc !important;
         color: #0f172a;
       }
+      html:not(.app-ready) #app {
+        visibility: hidden;
+        opacity: 0;
+      }
+      html.app-ready #app {
+        visibility: visible;
+        opacity: 1;
+      }
+      body.app-booting {
+        background:
+          linear-gradient(rgba(15, 23, 42, 0.015) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(15, 23, 42, 0.015) 1px, transparent 1px),
+          linear-gradient(180deg, #f5f9fc 0%, #f8fbff 100%) !important;
+        background-size: 26px 26px, 26px 26px, auto;
+        background-position: 0 0, 0 0, center;
+      }
+      body.app-booting::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 2147483646;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 8% 4%, rgba(14, 165, 183, 0.14), transparent 38%),
+          radial-gradient(circle at 92% 12%, rgba(56, 189, 248, 0.12), transparent 34%),
+          linear-gradient(180deg, #f5f9fc 0%, #f8fbff 100%);
+      }
+      html.app-preload * {
+        animation: none !important;
+        transition: none !important;
+      }
+      .admin-card,
+      .stat-box,
+      .admin-header {
+        background: #ffffff;
+        color: #0f172a;
+        border-color: #dbe5ef;
+      }
     </style>
+    <script>
+      (() => {
+        const stripDarkStyles = () => {
+          document.documentElement.removeAttribute("data-darkreader-mode");
+          document.documentElement.removeAttribute("data-darkreader-scheme");
+          document.querySelectorAll(
+            'style.darkreader, style.darkreader--fallback, style.darkreader--user, link.darkreader'
+          ).forEach((node) => node.remove());
+        };
+        stripDarkStyles();
+        const observer = new MutationObserver(stripDarkStyles);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        window.addEventListener("load", () => {
+          stripDarkStyles();
+          setTimeout(stripDarkStyles, 50);
+        });
+      })();
+    </script>
   </head>
   <body style="margin:0;background:#f5f9fc;color:#0f172a;">
     <div id="app"></div>

@@ -10,7 +10,9 @@ document.documentElement.style.backgroundColor = "#f5f9fc";
 document.documentElement.style.colorScheme = "light";
 document.body.style.backgroundColor = "#f5f9fc";
 document.body.style.color = "#0f172a";
-document.documentElement.classList.add("app-ready");
+document.documentElement.classList.add("app-preload");
+document.documentElement.classList.remove("app-ready");
+document.body.classList.add("app-booting");
 
 const pinia = createPinia();
 const app = createApp(App);
@@ -23,3 +25,11 @@ setupAdminApi(() => authStore.accessToken);
 
 app.use(router);
 app.mount("#app");
+
+requestAnimationFrame(() => {
+  document.documentElement.classList.add("app-ready");
+  setTimeout(() => {
+    document.documentElement.classList.remove("app-preload");
+    document.body.classList.remove("app-booting");
+  }, 50);
+});

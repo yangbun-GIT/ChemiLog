@@ -19,6 +19,7 @@ const selectedCategory = ref("전체");
 const categories = ref([{ category: "전체", itemCount: 0 }]);
 const foods = ref([]);
 const loading = ref(false);
+const initialLoading = ref(true);
 const errorMessage = ref("");
 const guideOpen = ref(false);
 const expandedMap = ref({});
@@ -442,16 +443,56 @@ watch(selectedSummaryMealType, (next) => {
 });
 
 onMounted(async () => {
-  if (!mealTypeOptions.includes(selectedSummaryMealType.value)) {
-    selectedSummaryMealType.value = inferDefaultMealType();
+  try {
+    if (!mealTypeOptions.includes(selectedSummaryMealType.value)) {
+      selectedSummaryMealType.value = inferDefaultMealType();
+    }
+    await loadCategories();
+    await Promise.all([loadFoods(), loadTodayMeals(), loadRecommendation()]);
+  } finally {
+    initialLoading.value = false;
   }
-  await loadCategories();
-  await Promise.all([loadFoods(), loadTodayMeals(), loadRecommendation()]);
 });
 </script>
 
 <template>
   <section class="space-y-4">
+    <template v-if="initialLoading">
+      <article class="bento-card">
+        <div class="skeleton h-10 w-40 rounded-lg" />
+        <div class="mt-3 grid gap-3 md:grid-cols-2">
+          <div class="skeleton h-24 rounded-xl" />
+          <div class="skeleton h-24 rounded-xl" />
+        </div>
+      </article>
+      <article class="bento-card">
+        <div class="skeleton h-8 w-52 rounded-lg" />
+        <div class="mt-3 grid gap-3 md:grid-cols-3">
+          <div class="skeleton h-28 rounded-xl" />
+          <div class="skeleton h-28 rounded-xl" />
+          <div class="skeleton h-28 rounded-xl" />
+        </div>
+      </article>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <article class="bento-card">
+          <div class="skeleton h-7 w-40 rounded-lg" />
+          <div class="mt-3 grid gap-2 sm:grid-cols-4">
+            <div class="skeleton h-20 rounded-xl" />
+            <div class="skeleton h-20 rounded-xl" />
+            <div class="skeleton h-20 rounded-xl" />
+            <div class="skeleton h-20 rounded-xl" />
+          </div>
+          <div class="skeleton mt-3 h-28 rounded-xl" />
+        </article>
+        <article class="bento-card">
+          <div class="skeleton h-7 w-48 rounded-lg" />
+          <div class="skeleton mt-3 h-24 rounded-xl" />
+          <div class="skeleton mt-3 h-14 rounded-xl" />
+          <div class="skeleton mt-3 h-9 rounded-xl" />
+        </article>
+      </div>
+    </template>
+    <template v-else>
     <article id="daily-meal-plan" class="bento-card">
       <p class="eyebrow">Personal Context</p>
       <div class="mt-2 grid gap-3 md:grid-cols-[1.2fr_1fr]">
@@ -886,5 +927,6 @@ onMounted(async () => {
         </div>
       </article>
     </div>
+    </template>
   </section>
 </template>

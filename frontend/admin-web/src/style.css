@@ -20,6 +20,15 @@ body,
   min-height: 100%;
 }
 
+html:not(.app-ready) #app {
+  opacity: 0;
+}
+
+html.app-ready #app {
+  opacity: 1;
+  transition: opacity 0.12s linear;
+}
+
 body {
   background:
     linear-gradient(rgba(15, 23, 42, 0.015) 1px, transparent 1px),
@@ -35,6 +44,18 @@ body {
     auto;
   font-family: "Manrope", "Noto Sans KR", sans-serif;
   color: #0f172a;
+}
+
+body.app-booting::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 4%, rgba(14, 165, 183, 0.14), transparent 38%),
+    radial-gradient(circle at 92% 12%, rgba(56, 189, 248, 0.12), transparent 34%),
+    linear-gradient(180deg, #f5f9fc 0%, #f8fbff 100%);
 }
 
 .admin-app-shell {

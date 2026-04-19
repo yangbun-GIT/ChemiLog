@@ -1,8 +1,28 @@
 # ChemiLog
 
-ChemiLog는 식품 첨가물 추적과 AI 영양 멘토링을 제공하는 MSA 기반 B2C 헬스케어 플랫폼입니다.
+ChemiLog는 식품 첨가물 추적과 식단 기록/멘토링을 제공하는 B2C 헬스케어 MSA 프로젝트입니다.  
+고객용 웹(Customer Web), 관리자 웹(Admin CMS), 메인 백엔드(Spring Boot), AI 백엔드(FastAPI), 데이터 계층(PostgreSQL/Redis/Milvus/MinIO)을 Docker Compose로 통합 실행합니다.
 
-## 아키텍처
+## 1) 프로젝트 구조
+
+```text
+ChemiLog/
+├─ frontend/
+│  ├─ customer-web/        # Vue3 + Pinia + Vite
+│  └─ admin-web/           # Vue3 + Vite
+├─ backend/
+│  └─ main-service/        # Java 17 + Spring Boot 3.x
+├─ ai-service/             # Python 3.11 + FastAPI
+├─ docs/
+│  ├─ swagger.md           # Swagger/OpenAPI 문서 가이드
+│  └─ submission-guide.md  # 제출/DB 캡처 가이드
+├─ docker-compose.yml
+├─ .env.example
+└─ .gitignore
+```
+
+## 2) 서비스 구조도
+
 ```mermaid
 flowchart LR
     U["User Browser"] --> CW["Customer Web (Nginx/Vue)"]
@@ -18,67 +38,84 @@ flowchart LR
     MV --> ET["etcd"]
 ```
 
-## 기술 스택
-- Customer/Admin Web: Vue 3, Pinia, Vite, TailwindCSS
-- Main Backend: Java 17, Spring Boot 3.x, Spring Security, JPA, Flyway
-- AI Backend: Python 3.11+, FastAPI, uv
-- Infra: Docker Compose, PostgreSQL, Redis, Milvus, MinIO, etcd
+## 3) 기술 스택
 
-## 환경 변수
-1. `.env` 파일이 필요합니다.
-2. 기본 템플릿:
+- Frontend: Vue 3, Pinia, Vite, TailwindCSS
+- Main Backend: Java 17, Spring Boot 3.x, Spring Security, Spring Data JPA, Flyway
+- AI Backend: Python 3.11+, FastAPI, uv
+- Infra: Docker Compose, Nginx, PostgreSQL, Redis, Milvus, MinIO, etcd
+
+## 4) 실행 방법
+
+### 4-1. 환경 변수 준비
+
 ```powershell
 copy .env.example .env
 ```
-3. 최소 수정 권장 값:
+
+최소 수정 권장 항목:
 - `JWT_SECRET`
 - `POSTGRES_PASSWORD`
 - `INTERNAL_API_SECRET`
-- `OPENAI_API_KEY` (비워두면 AI는 폴백 응답 모드로 동작)
+- `OPENAI_API_KEY` (AI 멘토링 실사용 시 필수)
 
-## 로컬 실행
+### 4-2. 전체 서비스 실행
+
 ```powershell
 docker compose up -d --build
 docker compose ps
 ```
 
-## 접속 URL
+### 4-3. 접속 주소
+
 - Customer Web: `http://localhost:3000`
 - Admin Web: `http://localhost:3001`
-- Spring API: `http://localhost:8081`
-- Spring Swagger: `http://localhost:8081/swagger-ui.html`
-- FastAPI Docs (내부망 서비스): `http://localhost:8000/docs` (직접 포트 바인딩 시에만 접근)
+- Spring API(호스트): `http://localhost:18081`
+- Spring Swagger UI: `http://localhost:18081/swagger-ui.html`
+- Spring OpenAPI JSON: `http://localhost:18081/api-docs`
+- FastAPI Docs(내부 컨테이너): `http://localhost:8000/docs`  
+  - 기본 compose 구성은 `fastapi-service`를 host에 직접 publish하지 않으므로, 외부 브라우저에서 바로 접속하려면 별도 포트 바인딩이 필요합니다.
 
-## 개발용 로그인 계정 (Seed)
-- Admin: `admin@chemilog.com` / `Admin1234!`
-- User: `user@chemilog.com` / `User1234!`
-- Premium: `premium@chemilog.com` / `Premium1234!`
+## 5) 개발/빌드
 
-## 빌드
-루트에서 프론트 전체 빌드:
+루트 빌드:
+
 ```powershell
 npm run build
 ```
 
 개별 빌드:
+
 ```powershell
 npm --prefix .\frontend\customer-web run build
 npm --prefix .\frontend\admin-web run build
 ```
 
-AI 컴파일 체크:
+AI 서비스 문법 체크:
+
 ```powershell
 uv --directory .\ai-service run python -m compileall app
 ```
 
-## 데이터베이스 초기화
-- Flyway가 앱 기동 시 자동으로 마이그레이션을 수행합니다.
-- 포함된 마이그레이션:
-  - `V1__init_schema.sql`: 핵심 스키마 생성
-  - `V2__seed_dev_data.sql`: 개발용 계정/식품/첨가물 시드 데이터
+## 6) 초기 계정(개발 시드)
 
-## 자주 발생하는 이슈
-- 루트에서 `npm run build` 시 `package.json` 없음:
-  - 해결: 루트 `package.json`이 포함되어 있으므로 최신 코드 기준으로는 정상 동작
-- `uv run python -m compileall app`에서 `Can't list 'app'`:
-  - 해결: `ai-service` 디렉토리에서 실행하거나 `uv --directory .\ai-service ...` 사용
+- Admin: `admin@chemilog.com` / `Admin1234!`
+- User: `user@chemilog.com` / `User1234!`
+- Premium: `premium@chemilog.com` / `Premium1234!`
+
+## 7) 문서
+
+- Swagger 문서 가이드: [docs/swagger.md](./docs/swagger.md)
+- 제출/DB 캡처 가이드: [docs/submission-guide.md](./docs/submission-guide.md)
+
+## 8) 보안/커밋 정책 요약
+
+다음 파일/폴더는 커밋 금지:
+- `.env`, `.env.*` (단, `.env.example` 허용)
+- `node_modules/`
+- `.venv/`
+- `.idea/`
+- `__pycache__/`
+- `*.pem`, `*.key` 등 인증서/키 파일
+
+`.gitignore`로 차단되어 있으며, 커밋 전 `git status` / `git ls-files`로 반드시 확인하세요.

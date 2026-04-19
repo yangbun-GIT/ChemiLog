@@ -12,6 +12,7 @@ const cartStore = useCartStore();
 const profileStore = useProfileStore();
 
 const online = ref(navigator.onLine);
+const appBootReady = ref(false);
 
 const onlineLabel = computed(() => (online.value ? "온라인" : "오프라인"));
 
@@ -30,24 +31,35 @@ function onVisibilityChange() {
 }
 
 onMounted(async () => {
-  cartStore.hydrate();
-  cartStore.startDateTicker();
-  profileStore.hydrate();
-  await authStore.trySilentRefresh();
+  try {
+    cartStore.hydrate();
+    cartStore.startDateTicker();
+    profileStore.hydrate();
+    await authStore.trySilentRefresh();
 
-  if (authStore.isAuthenticated) {
-    try {
-      await profileStore.fetchMe();
-      const history = await cartStore.fetchHistory();
-      cartStore.applyHistory(history);
-    } catch {
-      // ignore initial hydrate failures and keep local fallback
+    if (authStore.isAuthenticated) {
+      try {
+        await profileStore.fetchMe();
+        const history = await cartStore.fetchHistory();
+        cartStore.applyHistory(history);
+      } catch {
+        // ignore initial hydrate failures and keep local fallback
+      }
     }
-  }
 
-  window.addEventListener("online", onOnline);
-  window.addEventListener("offline", onOffline);
-  document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+  } finally {
+    appBootReady.value = true;
+    requestAnimationFrame(() => {
+      document.documentElement.classList.add("app-ready");
+      setTimeout(() => {
+        document.documentElement.classList.remove("app-preload");
+        document.body.classList.remove("app-booting");
+      }, 60);
+    });
+  }
 });
 
 onUnmounted(() => {
@@ -89,10 +101,17 @@ onUnmounted(() => {
     </div>
 
     <main class="container-main">
+      <div v-if="!appBootReady" class="panel">
+        <div class="skeleton h-20 w-full rounded-xl" />
+        <div class="mt-3 grid gap-3 md:grid-cols-2">
+          <div class="skeleton h-56 rounded-xl" />
+          <div class="skeleton h-56 rounded-xl" />
+        </div>
+      </div>
       <div v-if="authStore.isSessionLoading" class="panel">
         <div class="skeleton h-16 w-full rounded-xl" />
       </div>
-      <router-view v-else />
+      <router-view v-else-if="appBootReady" />
     </main>
 
     <OnboardingWizard />
