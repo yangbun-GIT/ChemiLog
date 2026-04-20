@@ -1,69 +1,124 @@
-# ChemiLog 제출 가이드
+# ChemiLog Submission Guide
 
-## 1) 소스코드 제출 시 제외 항목
+## 1) Required Deliverables
 
-필수 제외:
-- `node_modules/`
-- `.venv/`
-- `.idea/`
-- `__pycache__/`
-- `.env`, `.env.*` (단 `.env.example` 포함)
-- `*.pem`, `*.key`, `*.crt`, `*.jks` 등 키/인증서
+- Requirement spec (written by student)
+- Requirement spec (AI revision + student review)
+- Source code (exclude `node_modules`)
+- Runtime screenshots (2 web pages + real DB data screen)
+- Documents (`Swagger` + `README.md`)
 
-현재 프로젝트는 `.gitignore`에 반영되어 있습니다.
+## 2) Source Code Submission: Remove node_modules Locally
 
-## 2) 로컬에서 제출용 압축 만들기 (권장)
-
-Git 추적 파일만 압축하면 제외 항목이 자동으로 빠집니다.
+Run:
 
 ```powershell
-git archive --format=zip --output .\ChemiLog-submit.zip HEAD
+Remove-Item -Recurse -Force .\frontend\customer-web\node_modules
+Remove-Item -Recurse -Force .\frontend\admin-web\node_modules
 ```
 
-이 방식은 `node_modules` 같은 로컬 생성물/민감파일이 포함될 위험이 낮습니다.
+Check:
 
-## 3) 실행 화면 캡처(웹 2개)
+```powershell
+git status
+```
 
-필수 캡처 예시:
-- 고객용 웹: 대시보드/식단/마이페이지 중 핵심 화면 1장 이상
-- 관리자 웹: 대시보드 + 식품/첨가물/사용자 관리 중 1장 이상
+Notes:
+- `.gitignore` already excludes `node_modules/`.
+- Your submission zip should include source code only.
 
-## 4) DB 실제 저장 화면 캡처 방법
+## 3) How to Capture Real DB Data (Easy Method)
 
-아래 2가지 중 하나를 권장합니다.
+### Method A: psql terminal capture (recommended)
 
-### 방법 A: psql CLI 화면 캡처 (빠름)
-
+1. Open PostgreSQL shell:
 ```powershell
 docker exec -it chemilog-postgres-1 psql -U chemilog_user -d chemilog
 ```
 
-psql 안에서 예시 쿼리:
-
+2. Run queries:
 ```sql
 \dt
 SELECT user_id, email, role, status FROM users ORDER BY user_id;
-SELECT meal_id, user_id, meal_date, meal_type, total_calories FROM meals ORDER BY meal_id DESC LIMIT 20;
-SELECT food_id, name, category, calories FROM food_items ORDER BY food_id DESC LIMIT 20;
+SELECT meal_id, user_id, meal_date, meal_type, total_calories
+FROM meals
+ORDER BY meal_id DESC
+LIMIT 20;
+SELECT food_id, name, category, calories
+FROM food_items
+ORDER BY food_id DESC
+LIMIT 20;
 ```
 
-터미널 결과 화면을 캡처하면 "실제 DB 저장" 증빙으로 사용할 수 있습니다.
+3. Capture the terminal screen. This is accepted as real stored DB evidence.
 
-### 방법 B: GUI 툴(DBeaver/pgAdmin) 화면 캡처
+### Method B: export CSV and capture in Excel
 
-연결 정보:
-- Host: `localhost`
-- Port: `5432` (직접 publish하지 않았다면 컨테이너 내부/터널 방식 필요)
-- DB: `chemilog`
-- User: `chemilog_user`
-- Password: `.env`의 `POSTGRES_PASSWORD`
+```powershell
+docker exec chemilog-postgres-1 psql -U chemilog_user -d chemilog -c "COPY (SELECT meal_id, user_id, meal_date, meal_type, total_calories FROM meals ORDER BY meal_id DESC LIMIT 20) TO STDOUT WITH CSV HEADER" > .\docs\meal-sample.csv
+```
 
-테이블 데이터 그리드 화면을 캡처해서 제출하면 됩니다.
+Open `docs/meal-sample.csv` in Excel and capture.
 
-## 5) 제출 체크리스트
+## 4) Web Screenshot Guide
 
-- [ ] 요구 명세서(본인 작성)
-- [ ] 요구 명세서(AI 첨삭 + 본인 검토본)
-- [ ] 소스코드(제외 항목 제거)
-- [ ] 실행 화면(고객 웹 + 관리자 웹 + DB 실제 저장 화면)
-- [ ] 문서(Swagger + README)
+- Customer Web: dashboard or meal sync page (at least 1)
+- Admin Web: dashboard or management page (at least 1)
+- Suggested names:
+  - `capture-customer-dashboard.png`
+  - `capture-admin-dashboard.png`
+  - `capture-db-psql.png`
+
+## 5) Swagger Submission Guide
+
+Spring Swagger:
+- `http://localhost:18081/swagger-ui.html`
+
+Export OpenAPI:
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:18081/api-docs -OutFile .\docs\spring-openapi.json
+```
+
+See also: `docs/swagger.md`
+
+## 6) Final Forbidden File Check Before Push
+
+```powershell
+git ls-files | Select-String -Pattern "(^|/)\.env$|(^|/)node_modules/|(^|/)\.venv/|\.idea/|__pycache__|\.pem$|\.key$"
+```
+
+If output is empty, no forbidden files are tracked.
+
+## 7) AI API Test Guide (for later)
+
+1. Set `OPENAI_API_KEY` in `.env`
+2. Restart:
+```powershell
+docker compose up -d --build
+```
+
+3. Get token:
+```powershell
+$loginBody = @{ username='user@chemilog.com'; password='User1234!' } | ConvertTo-Json
+$loginRes = Invoke-RestMethod -Uri "http://localhost:18081/api/v1/auth/login" -Method Post -ContentType "application/json" -Body $loginBody
+$token = $loginRes.data.access_token
+```
+
+4. Call AI mentoring API:
+```powershell
+$aiBody = @{
+  chat_history = @(@{ role = "user"; content = "Give feedback on my meals today." })
+  current_cart = @(@{ food_id = 5; name = "Samgyeopsal 1 serving"; quantity = 1.0 })
+} | ConvertTo-Json -Depth 5
+
+Invoke-WebRequest -Uri "http://localhost:18081/api/v1/ai/mentoring" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body $aiBody
+```
+
+Expected:
+- HTTP 200
+- Mentoring text or SSE response events
