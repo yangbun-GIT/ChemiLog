@@ -5,6 +5,8 @@ import com.chemilog.main.api.common.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -16,8 +18,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiResponse<Void>> handleApiException(ApiException e) {
+        log.warn("ApiException code={} status={} message={}", e.getCode(), e.getStatus(), e.getMessage());
         return ResponseEntity.status(e.getStatus())
                 .body(ApiResponse.fail(e.getCode(), e.getMessage(), List.of()));
     }
@@ -28,7 +33,7 @@ public class GlobalExceptionHandler {
                 .map(this::toErrorField)
                 .toList();
         return ResponseEntity.badRequest()
-                .body(ApiResponse.fail("COMMON-4000", "요청 값이 유효하지 않습니다.", errors));
+                .body(ApiResponse.fail("COMMON-4000", "Invalid request body.", errors));
     }
 
     @ExceptionHandler(BindException.class)
@@ -37,7 +42,7 @@ public class GlobalExceptionHandler {
                 .map(this::toErrorField)
                 .toList();
         return ResponseEntity.badRequest()
-                .body(ApiResponse.fail("COMMON-4001", "바인딩 중 오류가 발생했습니다.", errors));
+                .body(ApiResponse.fail("COMMON-4001", "Binding error occurred.", errors));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -46,13 +51,14 @@ public class GlobalExceptionHandler {
                 .map(v -> new ApiErrorField(v.getPropertyPath().toString(), v.getInvalidValue(), v.getMessage()))
                 .collect(Collectors.toList());
         return ResponseEntity.badRequest()
-                .body(ApiResponse.fail("COMMON-4002", "검증 오류가 발생했습니다.", errors));
+                .body(ApiResponse.fail("COMMON-4002", "Validation error occurred.", errors));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+        log.error("Unhandled exception", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.fail("COMMON-5000", "서버 내부 오류가 발생했습니다.", List.of()));
+                .body(ApiResponse.fail("COMMON-5000", "Internal server error.", List.of()));
     }
 
     private ApiErrorField toErrorField(FieldError error) {

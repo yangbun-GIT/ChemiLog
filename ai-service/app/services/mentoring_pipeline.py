@@ -11,7 +11,7 @@ from app.services.quality_guard import QualityGuard
 from app.services.rag_service import RagService
 from app.services.semantic_cache import SemanticCacheService
 
-FALLBACK_MESSAGE = "현재 정확한 의학적 정보를 분석하기 어렵습니다. 일반적인 영양 지침을 참고해 주세요."
+FALLBACK_MESSAGE = "현재 정확한 의학적 안전성을 검증하기 어려워 일반 영양 가이드로 전환합니다."
 
 
 class MentoringPipeline:
@@ -29,48 +29,53 @@ class MentoringPipeline:
         context: InternalUserContext,
     ) -> AsyncGenerator[dict[str, str], None]:
         latest_user_text = self._latest_user_text(request)
+
         policy_result = await self.openai_service.policy_check(latest_user_text)
         if not policy_result.valid:
             await self.log_client.log_violation(
                 user_id=context.user_id,
                 input_text=latest_user_text,
-                category=policy_result.category,
+                category=policy_result.category or "OUT_OF_DOMAIN",
                 confidence_score=policy_result.confidence_score,
             )
-            yield self._error_event(policy_result.reason or "안전 정책상 처리할 수 없는 요청입니다.")
+            yield self._error_event(policy_result.reason or "안전 정책상 해당 요청은 처리할 수 없습니다.")
             return
 
         additive_ids = [add_id for item in request.current_cart for add_id in item.additive_ids]
         rag_context = await self.rag_service.retrieve_context(latest_user_text, additive_ids)
-        system_prompt = self.persona_router.build_system_prompt(context, request.current_cart, rag_context)
+        system_prompt = self.persona_router.build_system_prompt(context, request, rag_context)
 
         cache_key = self.cache_service.build_key(latest_user_text, context)
         cached = self.cache_service.get(cache_key)
         if cached:
             yield self._message_event(cached.get("answer", ""), "generating")
-            completed_payload = {"chunk": "", "status": "completed"}
+            payload = {"chunk": "", "status": "completed"}
             if cached.get("action"):
-                completed_payload["action"] = cached["action"]
-            yield {"event": "message", "data": json.dumps(completed_payload, ensure_ascii=False)}
+                payload["action"] = cached["action"]
+            yield {"event": "message", "data": json.dumps(payload, ensure_ascii=False)}
             return
 
         messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
-        messages.extend([msg.model_dump() for msg in request.chat_history])
+        messages.extend([msg.model_dump() for msg in request.chat_history][-12:])
 
         generated = ""
-        async for token in self.openai_service.stream_chat(messages):
-            generated += token
-            quality_result = self.quality_guard.evaluate(generated, context.allergies)
-            if quality_result.blocked:
-                await self.log_client.log_hallucination(
-                    model_version=self.openai_service.__class__.__name__,
-                    prompt_context=system_prompt,
-                    generated_response=generated,
-                    failed_reason=quality_result.reason or "UNKNOWN",
-                )
-                yield self._error_event(FALLBACK_MESSAGE)
-                return
-            yield self._message_event(token, "generating")
+        try:
+            async for token in self.openai_service.stream_chat(messages):
+                generated += token
+                quality_result = self.quality_guard.evaluate(generated, context.allergies)
+                if quality_result.blocked:
+                    await self.log_client.log_hallucination(
+                        model_version="main-llm-stream",
+                        prompt_context=system_prompt,
+                        generated_response=generated,
+                        failed_reason=quality_result.reason or "UNKNOWN",
+                    )
+                    yield self._error_event(FALLBACK_MESSAGE)
+                    return
+                yield self._message_event(token, "generating")
+        except Exception:
+            yield self._error_event("AI 응답 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+            return
 
         action = self._decide_action(request)
         self.cache_service.set(cache_key, generated, action)
@@ -99,7 +104,6 @@ class MentoringPipeline:
         }
 
     def _decide_action(self, request: MentoringRequest) -> dict | None:
-        # 간단한 휴리스틱: 장바구니가 비어 있으면 예시 food_id를 제안하지 않는다.
         if not request.current_cart:
             return None
         return None

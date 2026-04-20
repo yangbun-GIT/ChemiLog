@@ -20,7 +20,7 @@ class QualityGuard:
             "진단 결과",
         ]
         if any(keyword in lowered for keyword in forbidden_medical):
-            return QualityResult(True, "의학적 처방 수준의 조언이 감지되었습니다.")
+            return QualityResult(True, "의학적 처방 또는 진단에 해당하는 표현이 감지되었습니다.")
 
         risky_remedies = [
             "검증되지 않은 민간요법",
@@ -31,8 +31,8 @@ class QualityGuard:
             return QualityResult(True, "검증되지 않은 민간요법 제안이 감지되었습니다.")
 
         for allergy in allergies:
-            allergy_token = allergy.lower()
-            if allergy_token and allergy_token in lowered and ("추천" in lowered or "권장" in lowered):
-                return QualityResult(True, f"알레르기({allergy}) 충돌 가능 식품이 추천되었습니다.")
+            token = allergy.lower().strip()
+            if token and token in lowered and ("추천" in lowered or "권장" in lowered):
+                return QualityResult(True, f"알레르기({allergy}) 충돌 가능 식품 추천이 감지되었습니다.")
 
         return QualityResult(False, None)

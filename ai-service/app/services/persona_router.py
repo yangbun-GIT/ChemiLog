@@ -1,41 +1,80 @@
 from __future__ import annotations
 
-from app.schemas.ai import CartItem, InternalUserContext
+from app.schemas.ai import MentoringRequest
+from app.schemas.ai import InternalUserContext
 
-PERSONA_A = (
-    "당신은 긍정적이고 따뜻한 시선을 가진 15년 차 임상 영양사입니다. "
-    "공감과 권유형 어투를 사용하고 강압적 표현을 피하십시오."
-)
+PERSONA_A = """
+You are a warm and encouraging clinical nutrition mentor.
+- First acknowledge the user's effort.
+- Give practical and small-step recommendations.
+- Never shame the user.
+- Always respond in Korean.
+"""
 
-PERSONA_B = (
-    "당신은 감정을 배제하고 결과 중심으로 분석하는 냉혹한 영양 분석가입니다. "
-    "불필요한 인사 없이 수치와 근거 중심으로 단호하게 제안하십시오."
-)
+PERSONA_B = """
+You are a strict, data-driven nutrition analyst.
+- Be concise, factual, and direct.
+- Focus on measurable tradeoffs and outcomes.
+- Provide clear next actions without emotional fluff.
+- Always respond in Korean.
+"""
 
 
 class PersonaRouter:
-    def choose_persona(self, context: InternalUserContext) -> str:
-        if context.strictness in {"HIGH", "STRICT", "EXTREME"}:
+    def choose_persona(self, strictness: str) -> str:
+        normalized = (strictness or "MEDIUM").upper()
+        if normalized in {"HIGH", "STRICT", "EXTREME"}:
             return PERSONA_B
         return PERSONA_A
 
     def build_system_prompt(
         self,
         context: InternalUserContext,
-        cart_items: list[CartItem],
+        request: MentoringRequest,
         rag_context: str,
     ) -> str:
-        persona = self.choose_persona(context)
+        profile = request.profile_context
+        goal = (profile.goal if profile and profile.goal else context.goal or "MAINTAIN").upper()
+        strictness = (
+            profile.strictness if profile and profile.strictness else context.strictness or "MEDIUM"
+        ).upper()
+        allergies = profile.allergies if profile and profile.allergies else context.allergies
+        persona = self.choose_persona(strictness)
+
         cart_preview = ", ".join(
-            f"{item.name or item.food_id} x {item.quantity}" for item in cart_items
+            f"{item.name or item.food_id} x {item.quantity}" for item in request.current_cart
         ) or "없음"
-        allergy_text = ", ".join(context.allergies) if context.allergies else "없음"
+
+        history_preview = "없음"
+        if request.meal_history:
+            rows = []
+            for day in request.meal_history[-7:]:
+                additives = ", ".join(day.top_additives[:3]) if day.top_additives else "-"
+                rows.append(
+                    f"{day.date}: kcal={day.total_calories}, items={day.item_count}, additives={additives}"
+                )
+            history_preview = " | ".join(rows)
+
+        allergy_text = ", ".join(allergies) if allergies else "없음"
+        selected_meal = (request.selected_meal_type or "UNKNOWN").upper()
+
         return (
             f"{persona}\n"
-            "아래 유저 컨텍스트를 반드시 반영해 답변하십시오.\n"
-            f"- 목표(goal): {context.goal}\n"
-            f"- 알레르기/질환(allergies): {allergy_text}\n"
-            f"- 현재 장바구니(cart): {cart_preview}\n"
-            "주의: 의학적 진단/처방을 하지 말고 영양 코칭에 집중하십시오.\n"
-            f"RAG 컨텍스트:\n{rag_context}"
+            "You are operating in the ChemiLog nutrition domain.\n"
+            "Hard rules:\n"
+            "- Use only nutrition coaching language, not medical diagnosis or prescription.\n"
+            "- Respect allergies strictly.\n"
+            "- If evidence is weak, state uncertainty clearly.\n"
+            "- Output must be in Korean.\n\n"
+            "User context:\n"
+            f"- user_id: {context.user_id}\n"
+            f"- role: {context.role}\n"
+            f"- tier: {context.tier}\n"
+            f"- goal: {goal}\n"
+            f"- strictness: {strictness}\n"
+            f"- allergies: {allergy_text}\n"
+            f"- selected_meal_type: {selected_meal}\n"
+            f"- current_cart: {cart_preview}\n"
+            f"- recent_meal_history: {history_preview}\n\n"
+            f"RAG context:\n{rag_context or '없음'}\n"
         )

@@ -112,6 +112,13 @@ async function sendMessage() {
         allergies: profileStore.allergies,
         strictness: profileStore.strictness,
       },
+      meal_history: (cartStore.history || []).slice(-14).map((day) => ({
+        date: day.date,
+        total_calories: Number(day.totalCalories ?? 0),
+        item_count: Number(day.itemCount ?? 0),
+        top_additives: day.topAdditives ?? [],
+      })),
+      selected_meal_type: cartStore.preferredMealType,
     };
 
     const response = await requestMentoring(payload);

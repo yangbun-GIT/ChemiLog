@@ -12,10 +12,10 @@ class ChatMessage(BaseModel):
 
 
 class CartItem(BaseModel):
-    food_id: int = Field(alias="food_id")
+    food_id: int
     name: str | None = None
     quantity: Decimal = Field(default=Decimal("1.0"), gt=Decimal("0"))
-    additive_ids: list[int] = Field(default_factory=list, alias="additive_ids")
+    additive_ids: list[int] = Field(default_factory=list)
 
     model_config = {"populate_by_name": True}
 
@@ -27,11 +27,31 @@ class CartItem(BaseModel):
         return value
 
 
-class MentoringRequest(BaseModel):
-    chat_history: list[ChatMessage] = Field(min_length=1, alias="chat_history")
-    current_cart: list[CartItem] = Field(default_factory=list, alias="current_cart")
+class ProfileContext(BaseModel):
+    goal: str | None = None
+    strictness: str | None = None
+    allergies: list[str] = Field(default_factory=list)
 
     model_config = {"populate_by_name": True}
+
+
+class MealHistoryEntry(BaseModel):
+    date: str
+    total_calories: Decimal = Field(default=Decimal("0"))
+    item_count: int = Field(default=0)
+    top_additives: list[str] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
+
+
+class MentoringRequest(BaseModel):
+    chat_history: list[ChatMessage] = Field(min_length=1)
+    current_cart: list[CartItem] = Field(default_factory=list)
+    profile_context: ProfileContext | None = Field(default=None)
+    meal_history: list[MealHistoryEntry] | None = Field(default=None)
+    selected_meal_type: str | None = Field(default=None)
+
+    model_config = {"populate_by_name": True, "extra": "ignore"}
 
 
 class PolicyResult(BaseModel):

@@ -16,7 +16,11 @@ public record AiMentoringRequest(
         @JsonAlias("current_cart")
         List<CartItem> currentCart,
         @JsonAlias("profile_context")
-        ProfileContext profileContext
+        ProfileContext profileContext,
+        @JsonAlias("meal_history")
+        List<MealHistoryItem> mealHistory,
+        @JsonAlias("selected_meal_type")
+        String selectedMealType
 ) {
     public record ChatMessage(
             @NotNull
@@ -40,6 +44,17 @@ public record AiMentoringRequest(
             String goal,
             List<String> allergies,
             String strictness
+    ) {
+    }
+
+    public record MealHistoryItem(
+            String date,
+            @JsonAlias("total_calories")
+            BigDecimal totalCalories,
+            @JsonAlias("item_count")
+            Integer itemCount,
+            @JsonAlias("top_additives")
+            List<String> topAdditives
     ) {
     }
 }
