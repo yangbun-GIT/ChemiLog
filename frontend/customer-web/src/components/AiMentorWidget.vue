@@ -36,8 +36,47 @@ function applyAction(action) {
   }
 }
 
+async function requestMentoring(payload) {
+  const attempt = async (token) =>
+    fetch("/api/v1/ai/mentoring", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+
+  let token = authStore.accessToken;
+  if (!token) {
+    await authStore.trySilentRefresh();
+    token = authStore.accessToken;
+  }
+  if (!token) {
+    throw new Error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+  }
+
+  let response = await attempt(token);
+  if (response.status === 401) {
+    await authStore.trySilentRefresh();
+    token = authStore.accessToken;
+    if (!token) {
+      throw new Error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+    }
+    response = await attempt(token);
+  }
+
+  return response;
+}
+
 async function sendMessage() {
   if (!canSend.value) return;
+
+  if (!authStore.isAuthenticated) {
+    await authStore.trySilentRefresh();
+  }
 
   if (!authStore.isAuthenticated) {
     aiChatStore.open();
@@ -75,18 +114,19 @@ async function sendMessage() {
       },
     };
 
-    const response = await fetch("/api/v1/ai/mentoring", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authStore.accessToken}`,
-      },
-      credentials: "include",
-      body: JSON.stringify(payload),
-    });
+    const response = await requestMentoring(payload);
 
     if (!response.ok || !response.body) {
-      throw new Error("AI 서비스 응답을 가져오지 못했습니다.");
+      let message = "AI 서비스 응답을 가져오지 못했습니다.";
+      try {
+        const errorBody = await response.json();
+        if (errorBody?.message) {
+          message = errorBody.message;
+        }
+      } catch {
+        // ignore non-json error payload
+      }
+      throw new Error(message);
     }
 
     const reader = response.body.getReader();
