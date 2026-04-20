@@ -28,7 +28,7 @@ spring:
     locations: classpath:db/migration
   mvc:
     async:
-      request-timeout: 5000
+      request-timeout: 120000
 
 management:
   endpoints:

@@ -1,7 +1,7 @@
-﻿import { defineStore } from "pinia";
+import { defineStore } from "pinia";
 import api from "../api/client";
 
-const PROFILE_STORAGE_KEY = "chemilog.customer.profile.v2";
+const PROFILE_STORAGE_PREFIX = "chemilog.customer.profile.v2.";
 
 function parseAllergies(raw) {
   if (!raw) {
@@ -18,6 +18,7 @@ function parseAllergies(raw) {
 
 export const useProfileStore = defineStore("profileStore", {
   state: () => ({
+    activeUserKey: "guest",
     onboardingCompleted: false,
     goal: "MAINTAIN",
     strictness: "MEDIUM",
@@ -66,9 +67,28 @@ export const useProfileStore = defineStore("profileStore", {
     },
   },
   actions: {
+    storageKey() {
+      return `${PROFILE_STORAGE_PREFIX}${this.activeUserKey}`;
+    },
+    setActiveUser(userId) {
+      const nextKey = userId ? `user:${userId}` : "guest";
+      if (nextKey === this.activeUserKey) return;
+      this.persist();
+      this.activeUserKey = nextKey;
+      this.loadedFromServer = false;
+      this.hydrate();
+    },
     hydrate() {
-      const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+      const raw = localStorage.getItem(this.storageKey());
       if (!raw) {
+        this.onboardingCompleted = false;
+        this.goal = "MAINTAIN";
+        this.strictness = "MEDIUM";
+        this.allergies = [];
+        this.email = "";
+        this.role = "USER";
+        this.status = "ACTIVE";
+        this.loadedFromServer = false;
         return;
       }
       try {
@@ -88,11 +108,12 @@ export const useProfileStore = defineStore("profileStore", {
         this.email = "";
         this.role = "USER";
         this.status = "ACTIVE";
+        this.loadedFromServer = false;
       }
     },
     persist() {
       localStorage.setItem(
-        PROFILE_STORAGE_KEY,
+        this.storageKey(),
         JSON.stringify({
           onboardingCompleted: this.onboardingCompleted,
           goal: this.goal,

@@ -1,5 +1,5 @@
-﻿<script setup>
-import { computed, nextTick, ref } from "vue";
+<script setup>
+import { computed, nextTick, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAiChatStore } from "../stores/aiChatStore";
 import { useAuthStore } from "../stores/authStore";
@@ -16,6 +16,18 @@ const text = ref("");
 const listRef = ref(null);
 
 const canSend = computed(() => text.value.trim().length > 0 && !aiChatStore.isStreaming);
+const currentUserId = computed(() => {
+  const sub = authStore.userClaims?.sub;
+  return sub != null ? String(sub) : null;
+});
+
+watch(
+  currentUserId,
+  (userId) => {
+    aiChatStore.setActiveUser(userId);
+  },
+  { immediate: true }
+);
 
 function scrollToBottom() {
   nextTick(() => {
@@ -93,13 +105,13 @@ async function sendMessage() {
   aiChatStore.open();
   aiChatStore.pushUserMessage(userText);
   aiChatStore.setStreaming(true);
-  aiChatStore.startAssistantDraft();
   scrollToBottom();
 
   try {
     const payload = {
       chat_history: aiChatStore.messages
         .slice(-10)
+        .filter((msg) => typeof msg.content === "string" && msg.content.trim().length > 0)
         .map((msg) => ({ role: msg.role === "assistant" ? "assistant" : "user", content: msg.content })),
       current_cart: cartStore.items.map((item) => ({
         food_id: item.foodId,
@@ -136,6 +148,7 @@ async function sendMessage() {
       throw new Error(message);
     }
 
+    aiChatStore.startAssistantDraft();
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
@@ -211,7 +224,7 @@ async function sendMessage() {
                 : 'bg-white border border-slate-200 text-slate-800',
             ]"
           >
-            <p>{{ message.content }}</p>
+            <p class="whitespace-pre-wrap break-words">{{ message.content }}</p>
             <button
               v-if="message.action && (message.action.type === 'ADD_TO_CART' || message.action.type === 'ADD_CART')"
               class="mt-2 rounded-lg bg-emerald-500 px-3 py-1 text-xs font-semibold text-white"

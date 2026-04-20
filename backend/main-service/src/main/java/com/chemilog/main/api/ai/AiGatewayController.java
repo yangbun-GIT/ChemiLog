@@ -24,7 +24,7 @@ public class AiGatewayController {
     }
 
     @PostMapping(value = "/mentoring", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @PreAuthorize("hasAnyRole('USER','PREMIUM')")
+    @PreAuthorize("hasAnyRole('USER','PREMIUM','ADMIN')")
     public ResponseEntity<StreamingResponseBody> mentoring(
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody AiMentoringRequest request

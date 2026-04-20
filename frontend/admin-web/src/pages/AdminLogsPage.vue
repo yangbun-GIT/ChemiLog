@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../api/client";
@@ -154,6 +154,14 @@ function violationLabel(value) {
   return map[value] ?? value;
 }
 
+function violationDisplay(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (!normalized) {
+    return "도메인 외 질문 (OUT_OF_DOMAIN)";
+  }
+  return `${violationLabel(normalized)} (${normalized})`;
+}
+
 watch(
   () => route.query.tab,
   async () => {
@@ -228,7 +236,7 @@ onMounted(async () => {
               <tr v-for="row in sortedPolicyRows" :key="row.logId">
                 <td>{{ row.createdAt }}</td>
                 <td>{{ row.userEmailMasked || `USER#${row.userId ?? '-'}` }}</td>
-                <td>{{ violationLabel(row.violationCategory) }} ({{ row.violationCategory }})</td>
+                <td>{{ violationDisplay(row.violationCategory) }}</td>
                 <td>{{ Number(row.confidenceScore || 0).toFixed(2) }}</td>
                 <td>{{ row.inputPreview }}</td>
               </tr>

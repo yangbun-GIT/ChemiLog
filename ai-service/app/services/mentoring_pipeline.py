@@ -29,8 +29,9 @@ class MentoringPipeline:
         context: InternalUserContext,
     ) -> AsyncGenerator[dict[str, str], None]:
         latest_user_text = self._latest_user_text(request)
+        recent_history = self._recent_history_texts(request)
 
-        policy_result = await self.openai_service.policy_check(latest_user_text)
+        policy_result = await self.openai_service.policy_check(latest_user_text, recent_history)
         if not policy_result.valid:
             await self.log_client.log_violation(
                 user_id=context.user_id,
@@ -38,7 +39,7 @@ class MentoringPipeline:
                 category=policy_result.category or "OUT_OF_DOMAIN",
                 confidence_score=policy_result.confidence_score,
             )
-            yield self._error_event(policy_result.reason or "안전 정책상 해당 요청은 처리할 수 없습니다.")
+            yield self._error_event(policy_result.reason or "안전 정책에 따라 해당 요청은 처리할 수 없습니다.")
             return
 
         additive_ids = [add_id for item in request.current_cart for add_id in item.additive_ids]
@@ -72,8 +73,19 @@ class MentoringPipeline:
                     )
                     yield self._error_event(FALLBACK_MESSAGE)
                     return
+
                 yield self._message_event(token, "generating")
-        except Exception:
+
+        except Exception as exc:
+            try:
+                await self.log_client.log_hallucination(
+                    model_version="main-llm-stream",
+                    prompt_context=system_prompt,
+                    generated_response=generated,
+                    failed_reason=f"STREAM_ERROR: {exc}",
+                )
+            except Exception:
+                pass
             yield self._error_event("AI 응답 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
             return
 
@@ -90,6 +102,9 @@ class MentoringPipeline:
             if message.role == "user":
                 return message.content
         return request.chat_history[-1].content
+
+    def _recent_history_texts(self, request: MentoringRequest) -> list[str]:
+        return [msg.content for msg in request.chat_history[-12:] if msg.content.strip()]
 
     def _message_event(self, chunk: str, status: str) -> dict[str, str]:
         return {

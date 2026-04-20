@@ -1,8 +1,8 @@
-﻿import { defineStore } from "pinia";
+import { defineStore } from "pinia";
 import api from "../api/client";
 
-const CART_STORAGE_KEY = "chemilog.customer.cart.v4";
-const CART_META_KEY = "chemilog.customer.cart.meta.v2";
+const CART_STORAGE_PREFIX = "chemilog.customer.cart.v4.";
+const CART_META_PREFIX = "chemilog.customer.cart.meta.v2.";
 let dateTickerId = null;
 
 function todayDateString() {
@@ -68,6 +68,7 @@ function normalizeHistoryDay(raw) {
 
 export const useCartStore = defineStore("cartStore", {
   state: () => ({
+    activeUserKey: "guest",
     items: [],
     todayKey: todayDateString(),
     preferredMealType: "LUNCH",
@@ -206,6 +207,20 @@ export const useCartStore = defineStore("cartStore", {
     },
   },
   actions: {
+    cartStorageKey() {
+      return `${CART_STORAGE_PREFIX}${this.activeUserKey}`;
+    },
+    cartMetaKey() {
+      return `${CART_META_PREFIX}${this.activeUserKey}`;
+    },
+    setActiveUser(userId) {
+      const nextKey = userId ? `user:${userId}` : "guest";
+      if (nextKey === this.activeUserKey) return;
+      this.persistItems();
+      this.persistMeta();
+      this.activeUserKey = nextKey;
+      this.hydrate();
+    },
     tickTodayKey() {
       const next = todayDateString();
       if (this.todayKey !== next) {
@@ -227,7 +242,7 @@ export const useCartStore = defineStore("cartStore", {
     },
     hydrate() {
       this.todayKey = todayDateString();
-      const rawItems = localStorage.getItem(CART_STORAGE_KEY);
+      const rawItems = localStorage.getItem(this.cartStorageKey());
       if (rawItems) {
         try {
           const parsed = JSON.parse(rawItems);
@@ -237,9 +252,11 @@ export const useCartStore = defineStore("cartStore", {
         } catch {
           this.items = [];
         }
+      } else {
+        this.items = [];
       }
 
-      const rawMeta = localStorage.getItem(CART_META_KEY);
+      const rawMeta = localStorage.getItem(this.cartMetaKey());
       if (rawMeta) {
         try {
           const parsed = JSON.parse(rawMeta);
@@ -257,14 +274,20 @@ export const useCartStore = defineStore("cartStore", {
           this.preferredMealType = "LUNCH";
           this.history = [];
         }
+      } else {
+        this.syncStatus = "LOCAL_DRAFT";
+        this.lastSyncResult = null;
+        this.syncError = null;
+        this.preferredMealType = "LUNCH";
+        this.history = [];
       }
     },
     persistItems() {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(this.items));
+      localStorage.setItem(this.cartStorageKey(), JSON.stringify(this.items));
     },
     persistMeta() {
       localStorage.setItem(
-        CART_META_KEY,
+        this.cartMetaKey(),
         JSON.stringify({
           syncStatus: this.syncStatus,
           syncError: this.syncError,
@@ -326,7 +349,7 @@ export const useCartStore = defineStore("cartStore", {
     },
     clearItems() {
       this.items = [];
-      localStorage.removeItem(CART_STORAGE_KEY);
+      localStorage.removeItem(this.cartStorageKey());
       this.syncStatus = "LOCAL_DRAFT";
       this.syncError = null;
       this.persistMeta();
@@ -339,8 +362,8 @@ export const useCartStore = defineStore("cartStore", {
       this.syncError = null;
       this.lastSyncResult = null;
       this.history = [];
-      localStorage.removeItem(CART_STORAGE_KEY);
-      localStorage.removeItem(CART_META_KEY);
+      localStorage.removeItem(this.cartStorageKey());
+      localStorage.removeItem(this.cartMetaKey());
     },
     incrementQuantity(foodId, step = 1) {
       const target = this.items.find((item) => item.foodId === foodId);
@@ -439,11 +462,11 @@ export const useCartStore = defineStore("cartStore", {
     },
     async syncToServer(mealType = "LUNCH", loggedDate = todayDateString()) {
       if (this.items.length === 0) {
-        throw new Error("?λ컮援щ땲媛 鍮꾩뼱 ?덉뒿?덈떎.");
+        throw new Error("장바구니가 비어 있습니다.");
       }
       if (!navigator.onLine) {
         this.syncStatus = "SYNC_FAILED";
-        this.syncError = "?ㅽ봽?쇱씤 ?곹깭?낅땲?? ?⑤씪?몄쑝濡??꾪솚 ???ㅼ떆 ?쒕룄?댁＜?몄슂.";
+        this.syncError = "오프라인 상태입니다. 온라인으로 전환 후 다시 시도해 주세요.";
         this.persistMeta();
         throw new Error(this.syncError);
       }
@@ -489,7 +512,7 @@ export const useCartStore = defineStore("cartStore", {
         this.syncError =
           error?.response?.data?.message ??
           error?.message ??
-          "?앸떒 ?숆린?붿뿉 ?ㅽ뙣?덉뒿?덈떎. ?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.";
+          "식단 동기화에 실패했습니다. 잠시 후 다시 시도해 주세요.";
         this.persistMeta();
         throw error;
       } finally {

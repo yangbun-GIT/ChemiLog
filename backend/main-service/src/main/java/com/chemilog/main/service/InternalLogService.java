@@ -57,7 +57,7 @@ public class InternalLogService {
 
     private ViolationCategory toViolationCategory(String value) {
         if (value == null || value.isBlank()) {
-            return null;
+            return ViolationCategory.OUT_OF_DOMAIN;
         }
         try {
             return ViolationCategory.valueOf(value.toUpperCase(Locale.ROOT));

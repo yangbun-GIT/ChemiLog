@@ -1,8 +1,9 @@
-﻿<script setup>
-import { computed, onMounted, onUnmounted, ref } from "vue";
+<script setup>
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 import AiMentorWidget from "./components/AiMentorWidget.vue";
 import OnboardingWizard from "./components/OnboardingWizard.vue";
+import { useAiChatStore } from "./stores/aiChatStore";
 import { useAuthStore } from "./stores/authStore";
 import { useCartStore } from "./stores/cartStore";
 import { useProfileStore } from "./stores/profileStore";
@@ -10,11 +11,26 @@ import { useProfileStore } from "./stores/profileStore";
 const authStore = useAuthStore();
 const cartStore = useCartStore();
 const profileStore = useProfileStore();
+const aiChatStore = useAiChatStore();
 
 const online = ref(navigator.onLine);
 const appBootReady = ref(false);
 
 const onlineLabel = computed(() => (online.value ? "온라인" : "오프라인"));
+const currentUserId = computed(() => {
+  const sub = authStore.userClaims?.sub;
+  return sub != null ? String(sub) : null;
+});
+
+watch(
+  currentUserId,
+  (userId) => {
+    profileStore.setActiveUser(userId);
+    cartStore.setActiveUser(userId);
+    aiChatStore.setActiveUser(userId);
+  },
+  { immediate: true }
+);
 
 function onOnline() {
   online.value = true;

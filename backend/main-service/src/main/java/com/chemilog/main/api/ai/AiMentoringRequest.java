@@ -9,7 +9,7 @@ import java.util.List;
 
 public record AiMentoringRequest(
         @Valid
-        @NotEmpty(message = "chat_history는 최소 1개 이상이어야 합니다.")
+        @NotEmpty(message = "chat_history??理쒖냼 1媛??댁긽?댁뼱???⑸땲??")
         @JsonAlias("chat_history")
         List<ChatMessage> chatHistory,
         @Valid

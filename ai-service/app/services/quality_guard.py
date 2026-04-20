@@ -16,11 +16,11 @@ class QualityGuard:
         forbidden_medical = [
             "처방",
             "약을 복용",
-            "약물 복용",
-            "진단 결과",
+            "영양제 복용만으로 치료",
+            "진단 결과 확정",
         ]
         if any(keyword in lowered for keyword in forbidden_medical):
-            return QualityResult(True, "의학적 처방 또는 진단에 해당하는 표현이 감지되었습니다.")
+            return QualityResult(True, "의료 처방/진단으로 해석될 수 있는 표현이 감지되었습니다.")
 
         risky_remedies = [
             "검증되지 않은 민간요법",
