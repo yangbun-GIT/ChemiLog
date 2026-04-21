@@ -58,3 +58,6 @@ temp/
 # Local data volumes
 volumes/
 data/
+
+# Local-only submission/docs notes (do not upload)
+.local-guides/
