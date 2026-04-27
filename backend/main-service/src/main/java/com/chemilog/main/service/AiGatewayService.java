@@ -56,11 +56,11 @@ public class AiGatewayService {
 
     public StreamingResponseBody streamMentoring(AuthUser authUser, AiMentoringRequest request) {
         if (authUser == null) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "AUTH-4001", "濡쒓렇?몄씠 ?꾩슂?⑸땲??");
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "AUTH-4001", "로그인이 필요합니다.");
         }
 
         User user = userRepository.findByUserIdAndDeletedFalse(authUser.userId())
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "AUTH-4003", "?ъ슜?먮? 李얠쓣 ???놁뒿?덈떎."));
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "AUTH-4003", "사용자를 찾을 수 없습니다."));
 
         return outputStream -> {
             try {
@@ -70,7 +70,7 @@ public class AiGatewayService {
                         HttpResponse.BodyHandlers.ofInputStream()
                 );
                 if (downstreamResponse.statusCode() >= 400) {
-                    safeWriteErrorEvent(outputStream, "AI ?쒕퉬???몄텧???ㅽ뙣?덉뒿?덈떎.");
+                    safeWriteErrorEvent(outputStream, "AI 서비스 호출에 실패했습니다.");
                     return;
                 }
 
@@ -84,7 +84,7 @@ public class AiGatewayService {
                     }
                 }
             } catch (Exception e) {
-                safeWriteErrorEvent(outputStream, "AI ?쒕쾭 吏??以묒엯?덈떎. ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??");
+                safeWriteErrorEvent(outputStream, "AI 서버 지연 중입니다. 잠시 후 다시 시도해 주세요.");
             }
         };
     }
@@ -94,7 +94,7 @@ public class AiGatewayService {
         try {
             payload = snakeCaseObjectMapper.writeValueAsString(request);
         } catch (JsonProcessingException e) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "AI-4000", "AI ?붿껌 ?섏씠濡쒕뱶 吏곷젹?붿뿉 ?ㅽ뙣?덉뒿?덈떎.");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "AI-4000", "AI 요청 페이로드 직렬화에 실패했습니다.");
         }
 
         String goal = getHealthProfileString(user.getHealthProfile(), "goal", "MAINTAIN");

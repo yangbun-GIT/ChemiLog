@@ -32,7 +32,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
         response.getOutputStream().write(objectMapper.writeValueAsBytes(
-                ApiResponse.fail("AUTH-4030", "?묎렐 沅뚰븳???놁뒿?덈떎.", List.of())
+                ApiResponse.fail("AUTH-4030", "접근 권한이 없습니다.", List.of())
         ));
     }
 }

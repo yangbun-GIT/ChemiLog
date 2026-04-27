@@ -32,7 +32,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
         response.getOutputStream().write(objectMapper.writeValueAsBytes(
-                ApiResponse.fail("AUTH-4001", "?좏슚?섏? ?딆? Access Token?낅땲??", List.of())
+                ApiResponse.fail("AUTH-4001", "유효하지 않은 Access Token입니다.", List.of())
         ));
     }
 }
